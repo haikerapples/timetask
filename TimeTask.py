@@ -3,12 +3,13 @@ import plugins
 from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
 from channel.chat_message import ChatMessage
-from common.log import logger
+import logging
 from plugins import *
 import logging
 import arrow
 import re
 from plugins.timetask.TimeTaskTool import TaskManager
+from plugins.timetask.config import conf, load_config
 
 @plugins.register(
     name="TimeTask",
@@ -23,8 +24,10 @@ class TimeTask(Plugin):
     def __init__(self):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-        logger.info("[TimeTask] inited")
+        logging.info("[TimeTask] inited")
         self.taskManager = TaskManager()
+        load_config()
+        self.conf = conf()
         
         
     def on_handle_context(self, e_context: EventContext):
@@ -35,10 +38,12 @@ class TimeTask(Plugin):
         
         #查询内容
         query = e_context["context"].content
-        logger.info("定时任务的输入信息为:{}".format(query))
-
+        logging.info("定时任务的输入信息为:{}".format(query))
+        #指令前缀
+        command_prefix = self.conf.get("command_prefix", "$time")
+        
         #需要的格式：$time 时间 事件
-        if query.startswith('$time') :
+        if query.startswith(command_prefix) :
             #处理任务
             print("[TimeTask] 捕获到定时任务:{}".format(query))
             self.deal_timeTask(query, e_context)
@@ -54,7 +59,7 @@ class TimeTask(Plugin):
         #分割
         wordsArray = content.split(" ")
         if len(wordsArray) <= 2:
-              logger.info("定时任务的输入信息格式异常，请核查！示例:【$time 明天 十点十分 提醒我健身】，录入字符串：{}".format(query))
+              logging.info("定时任务的输入信息格式异常，请核查！示例:【$time 明天 十点十分 提醒我健身】，录入字符串：{}".format(query))
               return
         #周期
         circleStr = wordsArray[0]

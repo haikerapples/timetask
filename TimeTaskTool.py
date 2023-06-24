@@ -6,6 +6,8 @@ import arrow
 import time
 import threading
 import re
+from plugins.timetask.config import conf, load_config
+
 
 class TaskManager(object):
     #内存中定时任务的二维数组，数据格式：[[是否可用, 时间信息, 轮询信息, 消息内容, fromUser, toUser, isGroup, 原始内容]]
@@ -25,6 +27,9 @@ class TaskManager(object):
         obj = ExcelTool()
         obj.create_excel()
         self.timeTasks = obj.readExcel()
+        load_config()
+        self.conf = conf()
+        
         # 创建子线程
         t = threading.Thread(target=self.pingTimeTask_in_sub_thread)
         t.start()
@@ -34,7 +39,9 @@ class TaskManager(object):
         while True:
             # 定时检测
             self.timeCheck()
-            time.sleep(1)
+            #默认每秒检测一次
+            time_check_rate = self.conf.get("time_check_rate", 1)
+            time.sleep(int(time_check_rate))
     
     #时间检查
     def timeCheck(self):
@@ -69,7 +76,9 @@ class TaskManager(object):
         
         #当前无待消费任务     
         if len(currentExpendArray) <= 0:
-            #print("[timetask][定时检测]：当前时刻 - 无定时任务...")
+            debug = conf().get("debug", False)
+            if debug:
+                logging("[timetask][定时检测]：当前时刻 - 无定时任务...")
             return
         
         #执行task

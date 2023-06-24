@@ -1,0 +1,5 @@
+{
+  "command_prefix": "$time",
+  "debug": false,
+  "time_check_rate": 1
+}
