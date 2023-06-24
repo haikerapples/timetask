@@ -14,7 +14,7 @@ from plugins.timetask.TimeTaskTool import TaskManager
     name="TimeTask",
     desire_priority=0,
     hidden=True,
-    desc="定时器，可定时处理事件",
+    desc="定时任务系统，可定时处理事件",
     version="0.1",
     author="haikerwang",
 )
@@ -71,21 +71,9 @@ class TimeTask(Plugin):
         g_circle = self.get_cicleDay(circleStr)
         g_time = self.get_time(timeStr)
         
-        #格式检查
-        pattern = r'^\d{4}-\d{2}-\d{2}$'
-        # 是否符合 YYYY-MM-DD 格式的日期
-        isGoodDay = re.match(pattern, g_circle)
-        pattern1 = r'^\d{2}:\d{2}:\d{2}$'
-        time_good1 = re.match(pattern1, g_time)
-        
         #时间非法
-        if not time_good1:
+        if len(g_circle) <= 0 or len(g_time) <= 0:
             return
-        
-        #循环非法
-        if not isGoodDay:
-            if not circleStr in ['每天', '每周', '每星期']:
-                return
             
         #1：是否可用 - 0/1，0=不可用，1=可用
         #2：时间信息 - 格式为：HH:mm:ss
@@ -109,6 +97,7 @@ class TimeTask(Plugin):
         isGoodDay = re.match(pattern, circleStr)
         
         g_circle = ""
+        #如果可被解析为具体日期
         if circleStr in ['今天', '明天', '后天']:
               #今天
               today = arrow.now('local')
@@ -130,12 +119,23 @@ class TimeTask(Plugin):
                   print('暂不支持的格式')
                    
                     
+        #YYYY-MM-DD 格式
         elif isGoodDay:
+            g_circle = circleStr
+            
+        #每天、每周、工作日
+        elif circleStr in ["每天", "每周", "工作日"]:
+                g_circle = circleStr
+        
+        #每周X
+        elif circleStr in ["每周一", "每周二", "每周三", "每周四", "每周五", "每周六","每周日","每周天", 
+                           "每星期一", "每星期二","每星期三", "每星期四", "每星期五","每星期六", "每星期日", "每星期天"]:       
+            #每天、每周X等
             g_circle = circleStr
             
         else:
             print('暂不支持的格式')
-              
+            
         return g_circle
     
     #获取时间
@@ -193,13 +193,17 @@ class TimeTask(Plugin):
                   minute = "00"
             if int(second) == 0:
                   second = "00"            
-            g_time = hour + ":" + minute + ":" + second              
-                                    
+            g_time = hour + ":" + minute + ":" + second                                       
             
         else:
             print('暂不支持的格式')
+            
+        #检测转换的时间是否合法    
+        time_good1 = re.match(pattern1, g_time)
+        if time_good1:
+              return g_time
                  
-        return g_time
+        return ""
         
           
     
