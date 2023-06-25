@@ -12,6 +12,8 @@ from plugins.timetask.Tool import TimeTaskModel
 from lib import itchat
 from lib.itchat.content import *
 import re
+import arrow
+from plugins.timetask.Tool import ExcelTool
 
 @plugins.register(
     name="timetask",
@@ -53,9 +55,79 @@ class TimeTask(Plugin):
             content = content.replace(command_prefix, "")
             self.deal_timeTask(content, e_context)
 
-    
     #处理时间任务
     def deal_timeTask(self, content, e_context: EventContext):
+        
+        if content.startswith("取消任务"):
+            self.cancel_timeTask(content, e_context)
+            
+        elif content.startswith("任务列表"):
+            self.get_timeTaskList(content, e_context)
+            
+        else:
+            self.add_timeTask(content, e_context)
+        
+    #取消任务
+    def cancel_timeTask(self, content, e_context: EventContext):
+        #分割
+        wordsArray = content.split(" ")
+        #任务Id
+        taskId = wordsArray[1]
+        ExcelTool().disableItemToExcel(taskId)
+        #默认文案
+        reply_text = "⏰定时任务，取消成功~\n" + "【任务ID】：" + taskId + "\n" + "【任务详情】：" + content
+                
+        #群聊处理
+        msg: ChatMessage = e_context["context"]["msg"]
+        if msg.is_group:
+            reply_text = "@" + msg.fromUser + "\n" + reply_text.strip()
+            reply_text = conf().get("group_chat_reply_prefix", "") + reply_text + conf().get("group_chat_reply_suffix", "")
+        else:
+            reply_text = conf().get("single_chat_reply_prefix", "") + reply_text + conf().get("single_chat_reply_suffix", "")
+        receiver = msg.other_user_id
+        itchat.send(reply_text, toUserName=receiver)
+        e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
+        
+        
+    #获取任务列表
+    def get_timeTaskList(self, content, e_context: EventContext):
+        
+        reply_text = ""
+        #任务列表
+        taskArray = ExcelTool().readExcel()
+        tempArray = []
+        for item in taskArray:
+            model = TimeTaskModel(item, False)
+            if model.enable and model.taskId and len(model.taskId) > 0:
+                isToday = model.is_today()
+                isTimeBiggerThanNow = model.is_featureTime() or model.is_nowTime()
+                isCircleFeatureTime = "每周" in model.circleTimeStr or "每星期" in model.circleTimeStr or "每天" in model.circleTimeStr  or "工作日" in model.circleTimeStr
+                if (isToday and isTimeBiggerThanNow) or isCircleFeatureTime:
+                    tempArray.append(model)
+        
+        if len(tempArray) <= 0:
+            reply_text = "⏰当前无待执行的任务列表"
+        else:
+            reply_text = "⏰定时任务列表如下：\n\n"
+            #根据时间排序
+            sorted_times = sorted(tempArray, key=lambda x: self.custom_sort(x.timeStr))
+            for taskModel in sorted_times:
+                reply_text = reply_text + f"【{taskModel.taskId}】来自 {taskModel.fromUser}: {taskModel.circleTimeStr} {taskModel.timeStr} {taskModel.eventStr}\n"   
+                
+        #群聊处理
+        msg: ChatMessage = e_context["context"]["msg"]
+        if msg.is_group:
+            reply_text = "@" + msg.fromUser + "\n" + reply_text.strip()
+            reply_text = conf().get("group_chat_reply_prefix", "") + reply_text + conf().get("group_chat_reply_suffix", "")
+        else:
+            reply_text = conf().get("single_chat_reply_prefix", "") + reply_text + conf().get("single_chat_reply_suffix", "")
+        receiver = msg.other_user_id
+        itchat.send(reply_text, toUserName=receiver)
+        e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
+        
+          
+    #添加任务
+    def add_timeTask(self, content, e_context: EventContext):
         
         #分割
         wordsArray = content.split(" ")
@@ -104,17 +176,11 @@ class TimeTask(Plugin):
         #task入库
         taskId = self.taskManager.addTask(taskModel)
         #回消息
-        self.replay_message(content, e_context, taskId)
-          
-    
-    #回复消息
-    def replay_message(self, query, e_context: EventContext, taskID):
         reply_message = ""
-        if len(taskID) > 0:
-            reply_message = f"恭喜你，定时任务已创建成功🎉~\n【任务ID】：{taskID}\n【任务详情】：{query}"
+        if len(taskId) > 0:
+            reply_message = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{taskModel.eventStr}"
         else:
-            reply_message = f"sorry，定时任务创建失败😭" 
-
+            reply_message = f"sorry，⏰定时任务创建失败😭" 
         #回复内容
         reply = Reply()
         reply.type = ReplyType.TEXT
@@ -191,14 +257,19 @@ class TimeTask(Plugin):
             itchat.send(reply_text, toUserName=receiver)
 
 
+    # 自定义排序函数，将字符串解析为 arrow 对象，并按时间进行排序
+    def custom_sort(self, time):
+        return arrow.get(time, "HH:mm:ss")
+
     #help信息
     def get_help_text(self, **kwargs):
         h_str = "🎉功能一：添加定时任务\n"
         codeStr = "【指令】：$time 周期 时间 事件\n"
         circleStr = "【周期支持】：今天、明天、后天、每天、工作日、每周X（如：每周三）、YYYY-MM-DD的日期\n"
         timeStr = "【时间支持】：X点X分（如：十点十分）、HH:mm:ss的时间\n"
+        enventStr = "【事件支持】：早报、点歌、搜索、文案提醒（如：提醒我健身）\n"
         exampleStr = "\n👉示例：$time 明天 十点十分 提醒我健身\n\n\n"
-        tempStr = h_str + codeStr + circleStr + timeStr + exampleStr
+        tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr
         
         h_str1 = "🎉功能二：取消定时任务\n"
         codeStr1 = "【指令】：$time 取消任务 任务ID\n"

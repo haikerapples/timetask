@@ -68,7 +68,7 @@ class ExcelTool(object):
         
         
     # 置为失效
-    def disableItemToExcel(self, item, file_name=__file_name, sheet_name=__sheet_name):
+    def disableItemToExcel(self, taskId, file_name=__file_name, sheet_name=__sheet_name):
         #读取数据
         data = self.readExcel(file_name, sheet_name)
         if len(data) > 0:
@@ -79,9 +79,9 @@ class ExcelTool(object):
             #遍历
             for index, hisItem in enumerate(data):
                  #ID是否相同
-                 if hisItem[0] == item[0]:
+                 if hisItem[0] == taskId:
                     #置为已消费：即0
-                    ws.cell(index, 1).value = "0"
+                    ws.cell(index, 2).value = "0"
             #保存
             wb.save(workbook_file_path)
         else:
@@ -178,12 +178,14 @@ class TimeTaskModel:
         if tempTimeStr.count(":") == 2 and tempTimeStr.endswith("00"):
            return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
         #对比精准到秒 
-        return arrow.now().format('HH:mm:ss') == tempTimeStr
+        tempValue = arrow.now().format('HH:mm:ss') == tempTimeStr
+        return tempValue 
     
     #是否未来时间      
     def is_featureTime(self):
         tempTimeStr = self.timeStr
-        return arrow.get(tempTimeStr, 'HH:mm:ss').time() > arrow.now().time()
+        tempValue = arrow.get(tempTimeStr, 'HH:mm:ss').time() > arrow.now().time()
+        return tempValue 
     
     #是否today      
     def is_today(self):
@@ -214,6 +216,18 @@ class TimeTaskModel:
             else:
                 print(f"[定时任务执行][类型-每周]：非法任务，日期信息为：{item_circle}")
                 return False    
+            
+        elif "工作日" in item_circle:
+                # 判断星期几
+                weekday = arrow.now().weekday()
+                # 判断是否是工作日
+                is_weekday = weekday < 5
+                if is_weekday:
+                    print(f"[定时任务执行][类型-工作日]：即将执行任务")
+                    return True
+                else:
+                    print(f"[定时任务执行][类型-工作日]：非法任务，日期信息为：{item_circle}")
+                    return False    
                     
     #是否今天的星期数       
     def is_today_weekday(self, weekday_str):
@@ -225,7 +239,8 @@ class TimeTaskModel:
         
         # 判断今天是否是指定的星期几
         today = arrow.now()
-        return today.weekday() == weekday_num - 1        
+        tempValue = today.weekday() == weekday_num - 1   
+        return tempValue   
         
     #日期是否格式正确
     def is_valid_date(self, date_string):
