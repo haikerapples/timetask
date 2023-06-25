@@ -1,5 +1,20 @@
 {
   "command_prefix": "$time",
   "debug": false,
-  "time_check_rate": 1
+  "time_check_rate": 1,
+  "is_open_extension_function": true,
+  "extension_function": [
+    {
+      "key_word": "早报",
+      "func_command_prefix": "$tool "
+    },
+    {
+      "key_word": "点歌",
+      "func_command_prefix": " "
+    },
+    {
+      "key_word": "搜索",
+      "func_command_prefix": "$tool google "
+    }
+  ]
 }

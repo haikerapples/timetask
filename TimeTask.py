@@ -1,6 +1,6 @@
 # encoding:utf-8
 import plugins
-from bridge.context import ContextType
+from bridge.context import ContextType, Context
 from bridge.reply import Reply, ReplyType
 from channel.chat_message import ChatMessage
 import logging
@@ -9,6 +9,9 @@ import logging
 from plugins.timetask.TimeTaskTool import TaskManager
 from plugins.timetask.config import conf, load_config
 from plugins.timetask.Tool import TimeTaskModel
+from lib import itchat
+from lib.itchat.content import *
+import re
 
 @plugins.register(
     name="timetask",
@@ -26,7 +29,7 @@ class TimeTask(Plugin):
         logging.info("[TimeTask] inited")
         load_config()
         self.conf = conf()
-        self.taskManager = TaskManager()
+        self.taskManager = TaskManager(self.runTimeTask)
         
     def on_handle_context(self, e_context: EventContext):
         if e_context["context"].type not in [
@@ -89,6 +92,7 @@ class TimeTask(Plugin):
                     eventStr, 
                     msg.from_user_nickname,
                     msg.to_user_nickname, 
+                    msg.other_user_id, 
                     str(msg.is_group), 
                     str(msg))
         #model
@@ -117,6 +121,74 @@ class TimeTask(Plugin):
         reply.content = reply_message
         e_context["reply"] = reply
         e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
+        
+        
+    #执行定时task
+    def runTimeTask(self, model: TimeTaskModel):
+        
+        print("触发了定时任务：{}".format(model))
+        
+        #去除多余字符串
+        orgin_string = model.originMsg.replace("ChatMessage:", "")
+        # 使用正则表达式匹配键值对
+        pattern = r'(\w+)\s*=\s*([^,]+)'
+        matches = re.findall(pattern, orgin_string)
+        # 创建字典
+        content_dict = {match[0]: match[1] for match in matches}
+        
+        #查看配置中是否开启拓展功能
+        is_open_extension_function = self.conf.get("is_open_extension_function", True)
+        #需要拓展功能
+        if is_open_extension_function:
+            #事件字符串
+            event_content = model.eventStr
+            #支持的功能
+            funcArray = self.conf.get("extension_function", [])
+            for item in funcArray:
+              key_word = item["key_word"]
+              func_command_prefix = item["func_command_prefix"]
+              #匹配到了拓展功能
+              if event_content.startswith(key_word):
+                index = event_content.find(key_word)
+                event_content = event_content[:index] + func_command_prefix + key_word + event_content[index+len(key_word):]
+                break
+            
+            #找到了拓展功能
+            isFindExFuc = model.eventStr != event_content
+            e_context = None
+            if isFindExFuc:
+                #替换源消息中的指令
+                content_dict["content"] = event_content
+                #添加必要key
+                content_dict["receiver"] = model.other_user_id
+                content_dict["session_id"] = model.other_user_id
+                context = Context(ContextType.TEXT, event_content, content_dict)
+                #检测插件是否会消费该消息
+                e_context = PluginManager().emit_event(
+                    EventContext(
+                        Event.ON_HANDLE_CONTEXT,
+                        {"channel": self, "context": context, "reply": Reply()},
+                    )
+                )
+        
+        #未找到拓展功能 或 未开启拓展功能，则发源消息
+        if not isFindExFuc or e_context:
+            #回复原消息
+            if e_context:
+                reply_text = e_context["reply"].content
+                
+            #默认文案
+            if len(reply_text) <= 0:
+                reply_text = "⏰定时任务，时间已到啦~\n" + "【任务详情】：" + model.eventStr
+                  
+            #群聊处理
+            if model.isGroup:
+                reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
+                reply_text = conf().get("group_chat_reply_prefix", "") + reply_text + conf().get("group_chat_reply_suffix", "")
+            else:
+                reply_text = conf().get("single_chat_reply_prefix", "") + reply_text + conf().get("single_chat_reply_suffix", "")
+            receiver = model.other_user_id
+            itchat.send(reply_text, toUserName=receiver)
 
 
     #help信息

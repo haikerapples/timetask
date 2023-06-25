@@ -78,7 +78,8 @@ class ExcelTool(object):
             ws = wb[sheet_name]
             #遍历
             for index, hisItem in enumerate(data):
-                 if hisItem == item:
+                 #ID是否相同
+                 if hisItem[0] == item[0]:
                     #置为已消费：即0
                     ws.cell(index, 1).value = "0"
             #保存
@@ -114,8 +115,9 @@ class TimeTaskModel:
     #4：消息内容 - 消息内容
     #5：fromUser - 来源user
     #6：toUser - 发送给的user
-    #7：isGroup - 0/1，是否群聊； 0=否，1=是
-    #8：原始内容 - 原始的消息体
+    #7：other_user_id - otehrID
+    #8：isGroup - 0/1，是否群聊； 0=否，1=是
+    #9：原始内容 - 原始的消息体
     
     def __init__(self, item, isNeedFormat: bool):
         
@@ -126,8 +128,9 @@ class TimeTaskModel:
         self.eventStr = item[4]
         self.fromUser = item[5]
         self.toUser = item[6]
-        self.isGroup = item[7]
-        self.originMsg = item[8]
+        self.other_user_id = item[7]
+        self.isGroup = item[8] == "1"
+        self.originMsg = item[9]
         
         #需要处理格式
         if isNeedFormat:
@@ -147,13 +150,14 @@ class TimeTaskModel:
     #获取格式化后的Item
     def get_formatItem(self):
         temp_item = (self.taskId,
-                self.enable,
+                "1" if self.enable else "0",
                 self.timeStr,
                 self.circleTimeStr,
                 self.eventStr,
                 self.fromUser,
                 self.toUser,
-                self.isGroup,
+                self.other_user_id,
+                "1" if self.isGroup else "0",
                 self.originMsg) 
         return temp_item
             

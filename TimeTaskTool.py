@@ -9,9 +9,12 @@ from plugins.timetask.config import conf, load_config
 
 class TaskManager(object):
     
-    def __init__(self):
+    def __init__(self, timeTaskFunc):
         super().__init__()
         logging.info("[TimeTask] inited")
+        
+        #保存定时任务回调
+        self.timeTaskFunc = timeTaskFunc
         
         #配置加载
         load_config()
@@ -27,6 +30,7 @@ class TaskManager(object):
         
         # 创建子线程
         t = threading.Thread(target=self.pingTimeTask_in_sub_thread)
+        t.setDaemon(True) 
         t.start()
         
     # 定义子线程函数
@@ -90,22 +94,9 @@ class TaskManager(object):
               self.runTaskItem(model)
                 
     #执行task
-    def runTaskItem(self, model : TimeTaskModel):
-        #元素
-        #time
-        time = model.timeStr
-        #循环信息
-        cycleTimeInfo = model.circleTimeStr
-        #消息内容
-        messageInfo = model.eventStr
-        #@用户
-        toUser = model.toUser
-        #isGroup
-        isGroup = model.isGroup
-        
-        print("触发了定时任务：{}".format(model))
-        
-        #发消息
+    def runTaskItem(self, model: TimeTaskModel):
+        #回调定时任务执行
+        self.timeTaskFunc(model)
         
         #任务消费
         ExcelTool().disableItemToExcel(model.get_formatItem())
