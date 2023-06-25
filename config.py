@@ -4,7 +4,7 @@ import json
 import logging
 import os
 
-class Config(dict):
+class TimeTaskConfig(dict):
     def __init__(self, d=None):
         super().__init__()
         if d is None:
@@ -20,7 +20,7 @@ class Config(dict):
         except Exception as e:
             raise e
             
-config = Config()
+config = TimeTaskConfig()
 
 def load_config():
     global config
@@ -34,7 +34,7 @@ def load_config():
     logging("[timetask - INIT] config str: {}".format(config_str))
 
     # 将json字符串反序列化为dict类型
-    config = Config(json.loads(config_str))
+    config = TimeTaskConfig(json.loads(config_str))
 
 
 def read_file(path):

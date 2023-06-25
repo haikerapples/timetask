@@ -11,7 +11,7 @@ from plugins.timetask.config import conf, load_config
 from plugins.timetask.Tool import TimeTaskModel
 
 @plugins.register(
-    name="TimeTask",
+    name="timetask",
     desire_priority=0,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
@@ -24,10 +24,9 @@ class TimeTask(Plugin):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
         logging.info("[TimeTask] inited")
-        self.taskManager = TaskManager()
         load_config()
         self.conf = conf()
-        
+        self.taskManager = TaskManager()
         
     def on_handle_context(self, e_context: EventContext):
         if e_context["context"].type not in [

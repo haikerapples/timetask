@@ -7,12 +7,16 @@ import time
 import threading
 from plugins.timetask.config import conf, load_config
 
-
 class TaskManager(object):
     
     def __init__(self):
         super().__init__()
         logging.info("[TimeTask] inited")
+        
+        #配置加载
+        load_config()
+        self.conf = conf()
+        self.debug = self.conf.get("debug", False)
         
         #excel创建
         obj = ExcelTool()
@@ -20,11 +24,6 @@ class TaskManager(object):
         #任务数组
         tempArray = obj.readExcel()
         self.convetDataToModelArray(tempArray)
-        
-        #配置加载
-        load_config()
-        self.conf = conf()
-        self.debug = self.conf.get("debug", False)
         
         # 创建子线程
         t = threading.Thread(target=self.pingTimeTask_in_sub_thread)
