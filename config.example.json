@@ -10,7 +10,7 @@
     },
     {
       "key_word": "点歌",
-      "func_command_prefix": " "
+      "func_command_prefix": "$"
     },
     {
       "key_word": "搜索",
