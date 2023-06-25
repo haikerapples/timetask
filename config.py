@@ -31,7 +31,7 @@ def load_config():
         config_path = os.path.join(curdir, "config-template.json")
 
     config_str = read_file(config_path)
-    logging("[timetask - INIT] config str: {}".format(config_str))
+    logging.info("[timetask - INIT] config str: {}".format(config_str))
 
     # 将json字符串反序列化为dict类型
     config = TimeTaskConfig(json.loads(config_str))

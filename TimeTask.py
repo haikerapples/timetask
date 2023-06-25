@@ -48,7 +48,7 @@ class TimeTask(Plugin):
             #示例：$time 明天 十点十分 提醒我健身
             content = query.replace(f"{command_prefix} ", "")
             content = content.replace(command_prefix, "")
-            self.deal_timeTask(query, e_context)
+            self.deal_timeTask(content, e_context)
 
     
     #处理时间任务
@@ -121,22 +121,22 @@ class TimeTask(Plugin):
 
     #help信息
     def get_help_text(self, **kwargs):
-        h_str = "*************** 添加定时任务 *************\n"
+        h_str = "😄功能一：添加定时任务\n"
         codeStr = "【指令】：$time 周期 时间 事件\n"
         circleStr = "【周期支持】：今天、明天、后天、每天、工作日、每周X（如：每周三）、YYYY-MM-DD的日期\n"
         timeStr = "【时间支持】：X点X分（如：十点十分）、HH:mm:ss的时间\n"
-        exampleStr = "\n示例：$time 明天 十点十分 提醒我健身\n"
+        exampleStr = "\n🍉🍉示例：$time 明天 十点十分 提醒我健身\n\n"
         tempStr = h_str + codeStr + circleStr + timeStr + exampleStr
         
-        h_str1 = "*************** 取消定时任务 *************\n"
+        h_str1 = "😄功能二：取消定时任务\n"
         codeStr1 = "【指令】：$time 取消任务 任务ID\n"
         taskId1 = "【任务ID】：任务ID（添加任务成功时，机器人回复中有）\n"
-        exampleStr1 = "\n示例：$time 取消任务 urwOi0he\n"
+        exampleStr1 = "\n🍉🍉示例：$time 取消任务 urwOi0he\n\n"
         tempStr1 = h_str1 + codeStr1 + taskId1 + exampleStr1
         
-        h_str2 = "*************** 获取任务列表 *************\n"
+        h_str2 = "😄功能三：获取任务列表\n"
         codeStr2 = "【指令】：$time 任务列表\n"
-        exampleStr2 = "\n示例：$time 任务列表\n"
+        exampleStr2 = "\n🍉🍉示例：$time 任务列表\n\n"
         tempStr2 = h_str2 + codeStr2 + exampleStr2
         
         headStr = "定时任务功能介绍：添加定时任务、取消定时任务，获取任务列表。\n\n"
