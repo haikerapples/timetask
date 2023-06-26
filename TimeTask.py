@@ -170,8 +170,9 @@ class TimeTask(Plugin):
         #4：消息内容 - 消息内容
         #5：fromUser - 来源user
         #6：toUser - 发送给的user
-        #7：isGroup - 0/1，是否群聊； 0=否，1=是
-        #8：原始内容 - 原始的消息体
+        #7：other_user_id - other_user_id
+        #8：isGroup - 0/1，是否群聊； 0=否，1=是
+        #9：原始内容 - 原始的消息体
         msg: ChatMessage = e_context["context"]["msg"]
         taskInfo = ("",
                     "1", 
@@ -243,13 +244,14 @@ class TimeTask(Plugin):
               key_word = item["key_word"]
               func_command_prefix = item["func_command_prefix"]
               #匹配到了拓展功能
+              isFindExFuc = False
               if event_content.startswith(key_word):
                 index = event_content.find(key_word)
                 event_content = event_content[:index] + func_command_prefix + key_word + event_content[index+len(key_word):]
+                isFindExFuc = True
                 break
             
             #找到了拓展功能
-            isFindExFuc = model.eventStr != event_content
             e_context = None
             if isFindExFuc:
                 #替换源消息中的指令
