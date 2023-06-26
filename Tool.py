@@ -76,16 +76,26 @@ class ExcelTool(object):
             workbook_file_path = self.get_file_path(file_name)
             wb = load_workbook(workbook_file_path)
             ws = wb[sheet_name]
+            isExist = False
+            taskContent = ""
             #遍历
             for index, hisItem in enumerate(data):
                  #ID是否相同
                  if hisItem[0] == taskId:
                     #置为已消费：即0
-                    ws.cell(index, 2).value = "0"
-            #保存
-            wb.save(workbook_file_path)
+                    ws.cell(index + 1, 2).value = "0"
+                    isExist = True
+                    #循环信息 + 时间 + 事件内容
+                    taskContent = hisItem[3] + " " + hisItem[2] + " " + hisItem[4]
+                    
+            if isExist: 
+                #保存
+                wb.save(workbook_file_path)
+            
+            return isExist, taskContent
         else:
             print("timeTask文件无数据, 消费数据失败")
+            return False, ""
     
     
     #获取文件路径      
@@ -134,8 +144,10 @@ class TimeTaskModel:
         
         #需要处理格式
         if isNeedFormat:
-            #计算内容ID
-            temp_content='_'.join(item)
+            #计算内容ID (使用不可变的内容计算，去除元素：enable 会变、originMsg中有时间戳)
+            new_tuple = (self.timeStr, self.circleTimeStr, self.eventStr, self.fromUser, 
+                         self.toUser, self.other_user_id, "1" if self.isGroup else "0")
+            temp_content='_'.join(new_tuple)
             short_id = self.get_short_id(temp_content)
             print(f'消息体：{temp_content}， 唯一ID：{short_id}')
             self.taskId = short_id
@@ -187,6 +199,12 @@ class TimeTaskModel:
         tempValue = arrow.get(tempTimeStr, 'HH:mm:ss').time() > arrow.now().time()
         return tempValue 
     
+    #是否未来day      
+    def is_featureDay(self):
+        tempStr = self.circleTimeStr
+        tempValue = "每周" in tempStr or "每星期" in tempStr or "每天" in tempStr  or "工作日" in tempStr
+        return tempValue 
+    
     #是否today      
     def is_today(self):
         #当前时间
@@ -197,24 +215,24 @@ class TimeTaskModel:
             #日期相等
             if item_circle == current_time.format('YYYY-MM-DD'):
                 #今天要出发的任务
-                print(f"[定时任务执行][类型-录入日期]：即将执行任务, 日期信息：{item_circle}")
+                print(f"[定时任务]类型: 录入日期, 日期信息：{item_circle}")
                 return True
             else:
                 #其他时间待出发
-                print(f"[定时任务执行][类型-录入日期]：非法任务，日期信息：{item_circle}")
+                print(f"[定时任务]类型: 录入日期, 非今天任务, 日期信息：{item_circle}")
                 return False
             
         elif "每天" in item_circle:
             #今天要出发的任务
-            print(f"[定时任务执行][类型-每天]：即将执行任务")
+            print(f"[定时任务]类型：每天")
             return True
         
         elif "每周" in item_circle or "每星期" in item_circle:
             if self.is_today_weekday(item_circle):
-                print(f"[定时任务执行][类型-每周]：即将执行任务")
+                print(f"[定时任务]类型: 每周, 日期信息：{item_circle}")
                 return True
             else:
-                print(f"[定时任务执行][类型-每周]：非法任务，日期信息为：{item_circle}")
+                print(f"[定时任务]类型: 每周, 非今天任务, 日期信息为：{item_circle}")
                 return False    
             
         elif "工作日" in item_circle:
@@ -223,10 +241,10 @@ class TimeTaskModel:
                 # 判断是否是工作日
                 is_weekday = weekday < 5
                 if is_weekday:
-                    print(f"[定时任务执行][类型-工作日]：即将执行任务")
+                    print(f"[定时任务]类型: 工作日")
                     return True
                 else:
-                    print(f"[定时任务执行][类型-工作日]：非法任务，日期信息为：{item_circle}")
+                    print(f"[定时任务]类型: 工作日, 非今天任务，日期信息为：{item_circle}")
                     return False    
                     
     #是否今天的星期数       
@@ -330,33 +348,46 @@ class TimeTaskModel:
                 '五十一': 51, '五十二': 52, '五十三': 53, '五十四': 54, '五十五': 55, '五十六': 56, '五十七': 57, '五十八': 58, '五十九': 59, '六十': 60, '半': 30}
             for index, item in enumerate(wordsArray):
                 if index == 0 and len(item) > 0:
-                    if re.search('[\u4e00-\u9fa5]', item):
+                    #中文 且 在一 至 六十之间
+                    if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         hour = str(digits[item])
+                    elif item in digits.values():
+                         hour = str(item)
                     else:
-                         hour = item   
+                        return ""       
                             
                 elif index == 1 and len(item) > 0:
-                    if re.search('[\u4e00-\u9fa5]', item):
+                    if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         minute = str(digits[item])
+                    elif item in digits.values():
+                        minute = str(item)
                     else:
-                        minute = item
+                        return ""  
                         
                 elif index == 2 and len(item) > 0:
-                    if re.search('[\u4e00-\u9fa5]', item):
+                    if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         second = str(digits[item])
+                    elif item in digits.values():
+                        second = str(item)  
                     else:
-                        second = item    
-                        
-            if int(hour) == 0:
-                  hour = "00"
-            if int(minute) == 0:
-                  minute = "00"
-            if int(second) == 0:
-                  second = "00"            
+                        return ""    
+            
+            #格式处理       
+            if int(hour) < 10:
+                  hour = "0" + hour
+                      
+            if int(minute) < 10:
+                  minute = "0" + minute
+                  
+            if int(second) < 10:
+                  second = "0" + second  
+            
+            #拼接     
             g_time = hour + ":" + minute + ":" + second                                       
             
         else:
             print('暂不支持的格式')
+            return ""
             
         #检测转换的时间是否合法    
         time_good1 = re.match(pattern1, g_time)
