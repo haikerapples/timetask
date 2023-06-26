@@ -15,6 +15,15 @@ import re
 import arrow
 from plugins.timetask.Tool import ExcelTool
 
+class TimeTaskRemindType(Enum):
+    NO_Task = 1           #无任务
+    Add_Success = 2       #添加任务成功
+    Add_Failed = 3        #添加任务失败
+    Cancel_Success = 4    #取消任务成功
+    Cancel_Failed = 5     #取消任务失败
+    TaskList_Success = 6  #查看任务列表成功
+    TaskList_Failed = 7   #查看任务列表失败
+
 @plugins.register(
     name="timetask",
     desire_priority=0,
@@ -80,11 +89,12 @@ class TimeTask(Plugin):
         tempStr = ""
         #文案
         if isExist:
+            tempStr = self.get_default_remind(TimeTaskRemindType.Cancel_Success)
             reply_text = "⏰定时任务，取消成功~\n" + "【任务ID】：" + taskId + "\n" + "【任务详情】：" + taskContent
         else:
-            reply_text = "⏰定时任务，取消失败😭，未找到任务ID，请核查\n" + "【任务ID】：" + taskId + tempStr
-            
-        tempStr = "\n\n" + "【温馨提示】\n👉任务列表：$time 任务列表" + "\n" + "👉更多功能：#help timetask"
+            tempStr = self.get_default_remind(TimeTaskRemindType.Cancel_Failed)
+            reply_text = "⏰定时任务，取消失败😭，未找到任务ID，请核查\n" + "【任务ID】：" + taskId
+        
         #拼接提示
         reply_text = reply_text + tempStr
         #回复
@@ -110,16 +120,18 @@ class TimeTask(Plugin):
         reply_text = ""
         tempStr = ""
         if len(tempArray) <= 0:
-            tempStr = self.get_default_remind()
+            tempStr = self.get_default_remind(TimeTaskRemindType.NO_Task)
             reply_text = "⏰当前无待执行的任务列表"
         else:
-            tempStr = "\n\n" + "【温馨提示】\n👉取消任务：$time 取消任务 任务ID（如XXX）" + "\n" + "👉更多功能：#help timetask"
+            tempStr = self.get_default_remind(TimeTaskRemindType.TaskList_Success)
             reply_text = "⏰定时任务列表如下：\n\n"
             #根据时间排序
             sorted_times = sorted(tempArray, key=lambda x: self.custom_sort(x.timeStr))
             for taskModel in sorted_times:
                 reply_text = reply_text + f"【{taskModel.taskId}】@{taskModel.fromUser}: {taskModel.circleTimeStr} {taskModel.timeStr} {taskModel.eventStr}\n"   
-        
+            #移除最后一个换行    
+            reply_text = reply_text.rstrip('\n')
+            
         #拼接提示
         reply_text = reply_text + tempStr
         
@@ -130,7 +142,7 @@ class TimeTask(Plugin):
     #添加任务
     def add_timeTask(self, content, e_context: EventContext):
         #失败时，默认提示
-        defaultErrorMsg = "⏰定时任务指令格式异常😭，请核查！" + self.get_default_remind()
+        defaultErrorMsg = "⏰定时任务指令格式异常😭，请核查！" + self.get_default_remind(TimeTaskRemindType.Add_Failed)
         #分割
         wordsArray = content.split(" ")
         if len(wordsArray) <= 2:
@@ -181,20 +193,20 @@ class TimeTask(Plugin):
         #task入库
         taskId = self.taskManager.addTask(taskModel)
         #回消息
-        reply_message = ""
+        reply_text = ""
         tempStr = ""
         if len(taskId) > 0:
-            tempStr = "\n\n" + "【温馨提示】\n👉任务列表：$time 任务列表" + "\n" + "👉更多功能：#help timetask"
-            reply_message = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{taskModel.eventStr}"
+            tempStr = self.get_default_remind(TimeTaskRemindType.Add_Success)
+            reply_text = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{taskModel.eventStr}"
         else:
-            tempStr = self.get_default_remind()
-            reply_message = f"sorry，⏰定时任务创建失败😭" + tempStr
+            tempStr = self.get_default_remind(TimeTaskRemindType.Add_Failed)
+            reply_text = f"sorry，⏰定时任务创建失败😭"
             
         #拼接提示
         reply_text = reply_text + tempStr
             
         #回复
-        self.replay_use_default(reply_message, e_context)
+        self.replay_use_default(reply_text, e_context)
         
         
     #使用默认的回复
@@ -209,7 +221,7 @@ class TimeTask(Plugin):
     #执行定时task
     def runTimeTask(self, model: TimeTaskModel):
         
-        print("触发了定时任务：{}".format(model))
+        print("触发了定时任务：{} , 任务详情：{}".format(model.taskId, model.eventStr))
         
         #去除多余字符串
         orgin_string = model.originMsg.replace("ChatMessage:", "")
@@ -277,8 +289,51 @@ class TimeTask(Plugin):
         return arrow.get(time, "HH:mm:ss")
     
     # 默认的提示
-    def get_default_remind(self):
-        tempStr = "\n\n【温馨提示】\n👉添加任务：$time 明天 十点十分 提醒我健身" + "\n" + "👉更多功能：#help timetask"
+    def get_default_remind(self, currentType: TimeTaskRemindType):
+        #head
+        head = "\n\n【温馨提示】\n"
+        addTask = "👉添加任务：$time 明天 十点十分 提醒我健身" + "\n"
+        cancelTask = "👉取消任务：$time 取消任务 任务ID" + "\n"
+        taskList = "👉任务列表：$time 任务列表" + "\n"
+        more = "👉更多功能：#help timetask"
+        
+        # NO_Task = 1           #无任务
+        # Add_Success = 2       #添加任务成功
+        # Add_Failed = 3        #添加任务失败
+        # Cancel_Success = 4    #取消任务成功
+        # Cancel_Failed = 5     #取消任务失败
+        # TaskList_Success = 6  #查看任务列表成功
+        # TaskList_Failed = 7   #查看任务列表失败
+    
+        #组装
+        tempStr = head
+        if currentType == TimeTaskRemindType.NO_Task:
+           tempStr = tempStr + addTask + cancelTask + taskList
+            
+        elif currentType == TimeTaskRemindType.Add_Success:
+            tempStr = tempStr + cancelTask + taskList
+            
+        elif currentType == TimeTaskRemindType.Add_Failed:
+            tempStr = tempStr + addTask + cancelTask + taskList
+            
+        elif currentType == TimeTaskRemindType.Cancel_Success:
+            tempStr = tempStr + addTask + taskList 
+            
+        elif currentType == TimeTaskRemindType.Cancel_Failed:
+            tempStr = tempStr + addTask + cancelTask + taskList
+            
+        elif currentType == TimeTaskRemindType.TaskList_Success:
+            tempStr = tempStr + addTask + cancelTask
+            
+        elif currentType == TimeTaskRemindType.TaskList_Failed:
+            tempStr = tempStr + addTask + cancelTask + taskList   
+                      
+        else:
+          tempStr = tempStr + addTask + cancelTask + taskList
+          
+        #拼接help指令
+        tempStr = tempStr + more
+          
         return tempStr
     
     #help信息
