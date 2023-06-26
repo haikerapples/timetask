@@ -203,6 +203,10 @@ class TimeTaskModel:
     def is_featureDay(self):
         tempStr = self.circleTimeStr
         tempValue = "每周" in tempStr or "每星期" in tempStr or "每天" in tempStr  or "工作日" in tempStr
+        #日期
+        if self.is_valid_date(tempStr):
+            tempValue = arrow.get(tempStr, 'YYYY-MM-DD').time() > arrow.now().time()
+            
         return tempValue 
     
     #是否today      
