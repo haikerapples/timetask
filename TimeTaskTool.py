@@ -99,7 +99,8 @@ class TaskManager(object):
         self.timeTaskFunc(model)
         
         #任务消费
-        ExcelTool().disableItemToExcel(model.taskId)
+        if not model.is_featureDay():
+            ExcelTool().disableItemToExcel(model.taskId)
         
     #添加任务
     def addTask(self, taskModel: TimeTaskModel):
