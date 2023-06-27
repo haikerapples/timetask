@@ -20,8 +20,8 @@
 
 
 ## **【插件安装方法】**
-1. clone本仓库 或 下载源代码
-2. 将本插件放进 chatgpt-on-wechat 的 plugins 文件夹中（chatgpt-on-wechat启动后，会自动加载本插件）
+1. clone本仓库 或 下载源代码（源码下载方式时，timetask文件夹会自动带上分支名-main，将文件夹名称去除-main，命名timetask为即可）
+2. 将本插件的文件夹timetask, 放进 chatgpt-on-wechat 的 plugins 文件夹中（chatgpt-on-wechat启动后，会自动加载本插件）
 3. 安装插件依赖库：进入 timetask 文件夹，执行命令：pip3 install -r requirements.txt
 4. 至此，插件安转完毕，启动chatgpt-on-wechat，使用 timetask 插件
 
