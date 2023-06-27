@@ -74,7 +74,7 @@ class TaskManager(object):
         #当前无待消费任务     
         if len(currentExpendArray) <= 0:
             if self.debug:
-                logging("[timetask][定时检测]：当前时刻 - 无定时任务...")
+                logging.info("[timetask][定时检测]：当前时刻 - 无定时任务...")
             return
         
         #消费本次task
