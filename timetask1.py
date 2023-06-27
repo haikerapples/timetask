@@ -270,12 +270,13 @@ class TimeTask(Plugin):
         
         #未找到拓展功能 或 未开启拓展功能，则发源消息
         if not isFindExFuc or e_context:
+            reply_text = ""
             #回复原消息
             if e_context:
                 reply_text = e_context["reply"].content
                 
             #默认文案
-            if reply_text and len(reply_text) <= 0:
+            if len(reply_text) <= 0:
                 reply_text = "⏰叮铃铃，定时任务时间已到啦~\n" + "【任务详情】：" + model.eventStr
                   
             #群聊处理
