@@ -11,7 +11,6 @@ class TaskManager(object):
     
     def __init__(self, timeTaskFunc):
         super().__init__()
-        logging.info("[TimeTask] inited")
         
         #保存定时任务回调
         self.timeTaskFunc = timeTaskFunc
@@ -68,7 +67,7 @@ class TaskManager(object):
                  
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
         if self.timeTasks == modelArray and self.timeTasks != tempArray:
-            #将任务数组 更新为 待执行数组； 本次任务在下面执行消费逻辑
+            #将任务数组 更新为 待执行数组； 当前任务在下面执行消费逻辑
             self.timeTasks = tempArray
         
         #当前无待消费任务     
@@ -77,7 +76,7 @@ class TaskManager(object):
                 logging.info("[timetask][定时检测]：当前时刻 - 无定时任务...")
             return
         
-        #消费本次task
+        #消费当前task
         print(f"[timetask][定时检测]：当前时刻 - 存在定时任务, 准备消费: {currentExpendArray}")
         self.runTaskArray(currentExpendArray)
           
@@ -108,7 +107,7 @@ class TaskManager(object):
         self.convetDataToModelArray(taskList)
         return taskModel.taskId   
     
-     #model数组转换
+    #model数组转换
     def convetDataToModelArray(self, dataArray):
         tempArray = []
         for item in dataArray:
