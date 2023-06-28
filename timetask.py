@@ -299,23 +299,22 @@ class TimeTask(Plugin):
                     )
                 )
         
-        #未找到拓展功能 或 未开启拓展功能，则发源消息
-        if not isFindExFuc or e_context:
-            reply_text = ""
-            #回复原消息
-            if e_context:
-                reply_text = e_context["reply"].content
+        #回复处理
+        reply_text = ""
+        #插件消息
+        if e_context:
+            reply_text = e_context["reply"].content
+            
+        #原消息
+        if len(reply_text) <= 0:
+            reply_text = "⏰叮铃铃，定时任务时间已到啦~\n" + "【任务详情】：" + model.eventStr
                 
-            #默认文案
-            if len(reply_text) <= 0:
-                reply_text = "⏰叮铃铃，定时任务时间已到啦~\n" + "【任务详情】：" + model.eventStr
-                  
-            #群聊处理
-            if model.isGroup:
-                reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
-                
-            receiver = model.other_user_id
-            itchat.send(reply_text, toUserName=receiver)
+        #群聊处理
+        if model.isGroup:
+            reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
+            
+        receiver = model.other_user_id
+        itchat.send(reply_text, toUserName=receiver)
 
 
     # 自定义排序函数，将字符串解析为 arrow 对象，并按时间进行排序
@@ -327,6 +326,7 @@ class TimeTask(Plugin):
         #head
         head = "\n\n【温馨提示】\n"
         addTask = "👉添加任务：$time 明天 十点十分 提醒我健身" + "\n"
+        addGPTTask = "👉GPT任务：$time 明天 十点十分 GPT 夸夸我" + "\n"
         cancelTask = "👉取消任务：$time 取消任务 任务ID" + "\n"
         taskList = "👉任务列表：$time 任务列表" + "\n"
         more = "👉更多功能：#help timetask"
@@ -342,28 +342,28 @@ class TimeTask(Plugin):
         #组装
         tempStr = head
         if currentType == TimeTaskRemindType.NO_Task:
-           tempStr = tempStr + addTask + cancelTask + taskList
+           tempStr = tempStr + addTask + addGPTTask + cancelTask + taskList
             
         elif currentType == TimeTaskRemindType.Add_Success:
             tempStr = tempStr + cancelTask + taskList
             
         elif currentType == TimeTaskRemindType.Add_Failed:
-            tempStr = tempStr + addTask + cancelTask + taskList
+            tempStr = tempStr + addTask + addGPTTask + cancelTask + taskList
             
         elif currentType == TimeTaskRemindType.Cancel_Success:
-            tempStr = tempStr + addTask + taskList 
+            tempStr = tempStr + addTask + addGPTTask + taskList 
             
         elif currentType == TimeTaskRemindType.Cancel_Failed:
-            tempStr = tempStr + addTask + cancelTask + taskList
+            tempStr = tempStr + addTask + addGPTTask + cancelTask + taskList
             
         elif currentType == TimeTaskRemindType.TaskList_Success:
-            tempStr = tempStr + addTask + cancelTask
+            tempStr = tempStr + addTask + addGPTTask + cancelTask
             
         elif currentType == TimeTaskRemindType.TaskList_Failed:
-            tempStr = tempStr + addTask + cancelTask + taskList   
+            tempStr = tempStr + addTask + addGPTTask + cancelTask + taskList   
                       
         else:
-          tempStr = tempStr + addTask + cancelTask + taskList
+          tempStr = tempStr + addTask + addGPTTask + cancelTask + taskList
           
         #拼接help指令
         tempStr = tempStr + more
@@ -376,9 +376,10 @@ class TimeTask(Plugin):
         codeStr = "【指令】：$time 周期 时间 事件\n"
         circleStr = "【周期支持】：今天、明天、后天、每天、工作日、每周X（如：每周三）、YYYY-MM-DD的日期\n"
         timeStr = "【时间支持】：X点X分（如：十点十分）、HH:mm:ss的时间\n"
-        enventStr = "【事件支持】：早报、点歌、搜索、文案提醒（如：提醒我健身）\n"
-        exampleStr = "\n👉示例：$time 明天 十点十分 提醒我健身\n\n\n"
-        tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr
+        enventStr = "【事件支持】：早报、点歌、搜索、GPT、文案提醒（如：提醒我健身）\n"
+        exampleStr = "\n👉示例：$time 明天 十点十分 提醒我健身\n"
+        exampleStr0 = "👉示例：$time 明天 十点十分 GPT 夸夸我\n\n\n"
+        tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr + exampleStr0
         
         h_str1 = "🎉功能二：取消定时任务\n"
         codeStr1 = "【指令】：$time 取消任务 任务ID\n"
