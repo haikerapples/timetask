@@ -147,7 +147,7 @@ class TimeTask(Plugin):
         wordsArray = content.split(" ")
         if len(wordsArray) <= 2:
               logging.info("指令格式异常，请核查")
-              self.replay_use_default(defaultErrorMsg)
+              self.replay_use_default(defaultErrorMsg, e_context)
               return
         
         #指令解析
@@ -160,7 +160,7 @@ class TimeTask(Plugin):
         
         #容错
         if len(circleStr) <= 0 or len(timeStr) <= 0 or len(eventStr) <= 0 :
-            self.replay_use_default(defaultErrorMsg)
+            self.replay_use_default(defaultErrorMsg, e_context)
             return
         
         #0：ID - 唯一ID (自动生成，无需填写) 
@@ -188,7 +188,7 @@ class TimeTask(Plugin):
         taskModel = TimeTaskModel(taskInfo, True)
         #容错
         if len(taskModel.timeStr) <= 0 or len(taskModel.circleTimeStr) <= 0:
-            self.replay_use_default(defaultErrorMsg)
+            self.replay_use_default(defaultErrorMsg, e_context)
             return
         
         #task入库
