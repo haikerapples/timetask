@@ -14,6 +14,7 @@ from lib.itchat.content import *
 import re
 import arrow
 from plugins.timetask.Tool import ExcelTool
+from bridge.bridge import Bridge
 
 class TimeTaskRemindType(Enum):
     NO_Task = 1           #无任务
@@ -198,7 +199,7 @@ class TimeTask(Plugin):
         tempStr = ""
         if len(taskId) > 0:
             tempStr = self.get_default_remind(TimeTaskRemindType.Add_Success)
-            reply_text = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{taskModel.eventStr}"
+            reply_text = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{circleStr} {timeStr} {taskModel.eventStr}"
         else:
             tempStr = self.get_default_remind(TimeTaskRemindType.Add_Failed)
             reply_text = f"sorry，⏰定时任务创建失败😭"
@@ -218,6 +219,23 @@ class TimeTask(Plugin):
         reply.content = reply_message
         e_context["reply"] = reply
         e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
+        
+    #使用自定义回复
+    def replay_use_custom(self, model: TimeTaskModel, context: Context):
+        reply_text = ""
+        query = context.content
+        if len(query) <= 0:
+             reply_text = "查询的内容为空😭，请核查！" 
+        else:
+            replay = Bridge().fetch_reply_content(query, context)
+            reply_text = replay.content
+            
+        #群聊处理
+        if model.isGroup:
+            reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
+            
+        receiver = model.other_user_id
+        itchat.send(reply_text, toUserName=receiver)
         
     #执行定时task
     def runTimeTask(self, model: TimeTaskModel):
@@ -240,6 +258,8 @@ class TimeTask(Plugin):
             event_content = model.eventStr
             #支持的功能
             funcArray = self.conf.get("extension_function", [])
+            #是否是GPT消息
+            isGPT = False
             for item in funcArray:
               key_word = item["key_word"]
               func_command_prefix = item["func_command_prefix"]
@@ -247,7 +267,12 @@ class TimeTask(Plugin):
               isFindExFuc = False
               if event_content.startswith(key_word):
                 index = event_content.find(key_word)
-                event_content = event_content[:index] + func_command_prefix + key_word + event_content[index+len(key_word):]
+                insertStr = func_command_prefix + key_word 
+                if func_command_prefix == "GPT":
+                      isGPT = True
+                      insertStr = ""
+                #内容体      
+                event_content = event_content[:index] + insertStr + event_content[index+len(key_word):]
                 isFindExFuc = True
                 break
             
@@ -260,6 +285,12 @@ class TimeTask(Plugin):
                 content_dict["receiver"] = model.other_user_id
                 content_dict["session_id"] = model.other_user_id
                 context = Context(ContextType.TEXT, event_content, content_dict)
+                
+                #GPT处理
+                if isGPT:
+                    self.replay_use_custom(model, context)
+                    return
+            
                 #检测插件是否会消费该消息
                 e_context = PluginManager().emit_event(
                     EventContext(
