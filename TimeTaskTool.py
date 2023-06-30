@@ -56,19 +56,29 @@ class TaskManager(object):
         for model in modelArray:
             #是否现在时刻
             is_nowTime = model.is_nowTime()
-            #是否未来时间
+            #是否未来时刻
             is_featureTime = model.is_featureTime()
-            if model.enable and (is_nowTime or is_featureTime):
-                if is_nowTime:
+            #是否today
+            is_today = model.is_today()
+            #是否未来day
+            is_featureDay = model.is_featureDay()
+            if model.enable:
+                if is_nowTime and is_today:
                     currentExpendArray.append(model)
-                elif is_featureTime:
+                elif is_featureTime and (is_today or is_featureDay):
                     tempArray.append(model)
                  
                  
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
-        if self.timeTasks == modelArray and self.timeTasks != tempArray:
+        timeTask_ids = '😄'.join(item.taskId for item in self.timeTasks)
+        modelArray_ids = '😄'.join(item.taskId for item in modelArray)
+        tempArray_ids = '😄'.join(item.taskId for item in tempArray)
+        if timeTask_ids == modelArray_ids and timeTask_ids != tempArray_ids:
             #将任务数组 更新为 待执行数组； 当前任务在下面执行消费逻辑
             self.timeTasks = tempArray
+            print(f"内存任务更新：原任务列表 -> 待执行任务列表")
+            print(f"原任务ID列表：{timeTask_ids}")
+            print(f"待执行任务ID列表：{tempArray_ids}")
         
         #当前无待消费任务     
         if len(currentExpendArray) <= 0:
@@ -77,23 +87,19 @@ class TaskManager(object):
             return
         
         #消费当前task
-        print(f"[timetask][定时检测]：当前时刻 - 存在定时任务, 准备消费: {currentExpendArray}")
+        print(f"[timetask][定时检测]：当前时刻 - 存在定时任务, 执行消费 当前时刻任务")
         self.runTaskArray(currentExpendArray)
           
     #执行task
     def runTaskArray(self, modelArray: list[TimeTaskModel]):
         
-        if len(modelArray) <= 0:
-            return
-        
         #执行任务列表
-        for model in modelArray:
-          #日期是否今天
-          if model.is_today():
-              self.runTaskItem(model)
+        for index, model in enumerate(modelArray):
+            self.runTaskItem(model)
                 
     #执行task
     def runTaskItem(self, model: TimeTaskModel):
+        print(f"😄执行定时任务:【{model.taskId}】，任务详情：{model.circleTimeStr} {model.timeStr} {model.eventStr}")
         #回调定时任务执行
         self.timeTaskFunc(model)
         
