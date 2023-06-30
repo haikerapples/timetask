@@ -99,7 +99,11 @@ class TaskManager(object):
         
         #任务消费
         if not model.is_featureDay():
-            ExcelTool().disableItemToExcel(model.taskId)
+            obj = ExcelTool()
+            obj.disableItemToExcel(model.taskId)
+            #重载内存数组
+            tempArray = obj.readExcel()
+            self.convetDataToModelArray(tempArray)
         
     #添加任务
     def addTask(self, taskModel: TimeTaskModel):

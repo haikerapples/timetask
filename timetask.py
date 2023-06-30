@@ -284,6 +284,9 @@ class TimeTask(Plugin):
                 #添加必要key
                 content_dict["receiver"] = model.other_user_id
                 content_dict["session_id"] = model.other_user_id
+                content_dict["isgroup"] = model.isGroup
+                msg :ChatMessage = ChatMessage(content_dict)
+                content_dict["msg"] = msg
                 context = Context(ContextType.TEXT, event_content, content_dict)
                 
                 #GPT处理
