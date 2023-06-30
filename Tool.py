@@ -219,24 +219,24 @@ class TimeTaskModel:
             #日期相等
             if item_circle == current_time.format('YYYY-MM-DD'):
                 #今天要出发的任务
-                print(f"[定时任务]类型: 录入日期, 日期信息：{item_circle}")
+                #print(f"[定时任务]类型: 录入日期, 日期信息：{item_circle}")
                 return True
             else:
                 #其他时间待出发
-                print(f"[定时任务]类型: 录入日期, 非今天任务, 日期信息：{item_circle}")
+                #print(f"[定时任务]类型: 录入日期, 非今天任务, 日期信息：{item_circle}")
                 return False
             
         elif "每天" in item_circle:
             #今天要出发的任务
-            print(f"[定时任务]类型：每天")
+            #print(f"[定时任务]类型：每天")
             return True
         
         elif "每周" in item_circle or "每星期" in item_circle:
             if self.is_today_weekday(item_circle):
-                print(f"[定时任务]类型: 每周, 日期信息：{item_circle}")
+                #print(f"[定时任务]类型: 每周, 日期信息：{item_circle}")
                 return True
             else:
-                print(f"[定时任务]类型: 每周, 非今天任务, 日期信息为：{item_circle}")
+                #print(f"[定时任务]类型: 每周, 非今天任务, 日期信息为：{item_circle}")
                 return False    
             
         elif "工作日" in item_circle:
@@ -245,10 +245,10 @@ class TimeTaskModel:
                 # 判断是否是工作日
                 is_weekday = weekday < 5
                 if is_weekday:
-                    print(f"[定时任务]类型: 工作日")
+                    #print(f"[定时任务]类型: 工作日")
                     return True
                 else:
-                    print(f"[定时任务]类型: 工作日, 非今天任务，日期信息为：{item_circle}")
+                    #print(f"[定时任务]类型: 工作日, 非今天任务，日期信息为：{item_circle}")
                     return False    
                     
     #是否今天的星期数       
