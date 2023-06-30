@@ -65,7 +65,7 @@ class TaskManager(object):
             if model.enable:
                 if is_nowTime and is_today:
                     currentExpendArray.append(model)
-                elif is_featureTime and (is_today or is_featureDay):
+                elif (is_featureTime and is_today) or is_featureDay:
                     tempArray.append(model)
                  
                  
