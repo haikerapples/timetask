@@ -8,25 +8,67 @@ import hashlib
 import base64
 import arrow
 import re
+from datetime import time
 
 class ExcelTool(object):
     __file_name = "timeTask.xlsx"
     __sheet_name = "定时任务"
+    __history_sheet_name = "历史任务"
     __dir_name = "taskFile"
     
     # 新建工作簿
-    def create_excel(self, file_name: str = __file_name, sheet_name=__sheet_name):
+    def create_excel(self, file_name: str = __file_name, sheet_name=__sheet_name, history_sheet_name=__history_sheet_name):
         # 文件路径
         workbook_file_path = self.get_file_path(file_name)
 
         # 创建Excel
         if not os.path.exists(workbook_file_path):
             wb = Workbook()
-            wb.create_sheet(sheet_name, 0)
+            column_list_first = ['A', 'B', 'C', 'D', 'J']
+            width_value_first = 20
+            column_list_two = ['E', 'F', 'G', 'H', 'I']
+            width_value_two = 40
+            width_value_three = 1000
+            
+            #sheet1
+            ws = wb.create_sheet(sheet_name, 0)
+            # 类型处理 - 设置为字符串
+            for column in ws.columns:
+                for cell in column:
+                    cell.number_format = '@'
+            
+            #宽度处理 
+            for column in column_list_first:
+                ws.column_dimensions[column].width = width_value_first
+            for column in column_list_two:
+                ws.column_dimensions[column].width = width_value_two
+            ws.column_dimensions["K"].width = width_value_three  
+            
+                  
+            #sheet2
+            ws1 = wb.create_sheet(history_sheet_name, 1)
+            # 类型处理 - 设置为字符串
+            for column in ws1.columns:
+                for cell in column:
+                    cell.number_format = '@'
+                    
+            #宽度处理        
+            for column in column_list_first:
+                ws1.column_dimensions[column].width = width_value_first
+            for column in column_list_two:
+                ws1.column_dimensions[column].width = width_value_two
+            ws1.column_dimensions["K"].width = width_value_three     
+                    
             wb.save(workbook_file_path)
             print("定时Excel创建成功，文件路径为：{}".format(workbook_file_path))
         else:
-            print("timeTask文件已存在, 无需创建")
+            wb = load_workbook(workbook_file_path)
+            if not history_sheet_name in wb.sheetnames:
+                wb.create_sheet(history_sheet_name, 1)
+                wb.save(workbook_file_path)
+                print(f"创建sheet: {history_sheet_name}")
+            else:
+                print("timeTask文件已存在, 无需创建")
                 
 
     # 读取内容,返回元组列表
@@ -43,8 +85,45 @@ class ExcelTool(object):
             return data
         else:
             print("timeTask文件不存在, 读取数据为空")
+            self.create_excel()
             return []
-
+        
+    # 将历史任务迁移指历史Sheet
+    def moveTasksToHistoryExcel(self, tasks, file_name=__file_name, sheet_name=__sheet_name, history_sheet_name=__history_sheet_name):
+        # 文件路径
+        workbook_file_path = self.get_file_path(file_name)
+        
+        # 文件存在
+        if os.path.exists(workbook_file_path):
+            wb = load_workbook(workbook_file_path)
+            ws = wb[sheet_name]
+            data = list(ws.values)
+            
+            #遍历任务列表
+            for i, item in enumerate(data):
+                 #任务ID
+                 taskId = item[0]
+                 for j, hisItem in enumerate(tasks):
+                    #历史任务ID
+                    his_taskId = hisItem[0]
+                    if taskId == his_taskId:
+                        #移除
+                        ws.delete_rows(i + 1)
+            #保存            
+            wb.save(workbook_file_path)
+            
+            #添加历史列表
+            for index, t in enumerate(tasks):
+                self.addItemToExcel(t, file_name, history_sheet_name)     
+                
+            print(f"将任务Sheet({sheet_name})中的 过期任务 迁移指 -> 历史Sheet({history_sheet_name}) 完毕~")            
+            
+            #返回最新数据
+            return self.readExcel()  
+        else:
+            print("timeTask文件不存在, 数据为空")
+            self.create_excel()
+            return []
 
     # 写入列表，返回元组列表
     def addItemToExcel(self, item, file_name=__file_name, sheet_name=__sheet_name):
@@ -64,6 +143,7 @@ class ExcelTool(object):
             return data
         else:
             print("timeTask文件不存在, 添加数据失败")
+            self.create_excel()
             return []
         
         
@@ -126,21 +206,34 @@ class TimeTaskModel:
     #5：fromUser - 来源user
     #6：toUser - 发送给的user
     #7：other_user_id - otehrID
-    #8：isGroup - 0/1，是否群聊； 0=否，1=是
-    #9：原始内容 - 原始的消息体
+    #8：other_user_nickname - Other名称
+    #9：isGroup - 0/1，是否群聊； 0=否，1=是
+    #10：原始内容 - 原始的消息体
     
     def __init__(self, item, isNeedFormat: bool):
         
         self.taskId = item[0]
         self.enable = item[1] == "1"
-        self.timeStr = item[2]
+        timeValue = item[2]
+        tempTimeStr = ""
+        if isinstance(timeValue, time):
+            # 变量是 datetime.time 类型（Excel修改后，openpyxl会自动转换为该类型，本次做修正）
+            tempTimeStr = timeValue.strftime("%H:%M:%S")
+        elif isinstance(timeValue, str):
+            tempTimeStr = timeValue
+        else:
+            # 其他类型
+            print("其他类型时间，暂不支持")
+    
+        self.timeStr = tempTimeStr
         self.circleTimeStr = item[3]
         self.eventStr = item[4]
         self.fromUser = item[5]
         self.toUser = item[6]
         self.other_user_id = item[7]
-        self.isGroup = item[8] == "1"
-        self.originMsg = item[9]
+        self.other_user_nickname = item[8]
+        self.isGroup = item[9] == "1"
+        self.originMsg = item[10]
         
         #需要处理格式
         if isNeedFormat:
@@ -169,6 +262,7 @@ class TimeTaskModel:
                 self.fromUser,
                 self.toUser,
                 self.other_user_id,
+                self.other_user_nickname,
                 "1" if self.isGroup else "0",
                 self.originMsg) 
         return temp_item
@@ -187,7 +281,7 @@ class TimeTaskModel:
     def is_nowTime(self):
         tempTimeStr = self.timeStr
         #如果以00结尾，对比精准度为分钟
-        if tempTimeStr.count(":") == 2 and tempTimeStr.endswith("00"):
+        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
            return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
         #对比精准到秒 
         tempValue = arrow.now().format('HH:mm:ss') == tempTimeStr
@@ -196,6 +290,9 @@ class TimeTaskModel:
     #是否未来时间      
     def is_featureTime(self):
         tempTimeStr = self.timeStr
+        #如果以00结尾，对比精准度为分钟
+        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
+           tempTimeStr = tempTimeStr + ":00"
         tempValue = arrow.get(tempTimeStr, 'HH:mm:ss').time() > arrow.now().time()
         return tempValue 
     
@@ -205,7 +302,7 @@ class TimeTaskModel:
         tempValue = "每周" in tempStr or "每星期" in tempStr or "每天" in tempStr  or "工作日" in tempStr
         #日期
         if self.is_valid_date(tempStr):
-            tempValue = arrow.get(tempStr, 'YYYY-MM-DD').datetime > arrow.now().datetime
+            tempValue = arrow.get(tempStr, 'YYYY-MM-DD').date() > arrow.now().date()
             
         return tempValue 
     

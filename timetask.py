@@ -27,18 +27,19 @@ class TimeTaskRemindType(Enum):
 
 @plugins.register(
     name="timetask",
-    desire_priority=0,
+    desire_priority=500,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
     version="0.1",
     author="haikerwang",
 )
-class TimeTask(Plugin):
+    
+class timetask(Plugin):
     
     def __init__(self):
         super().__init__()
         self.handlers[Event.ON_HANDLE_CONTEXT] = self.on_handle_context
-        logging.info("[TimeTask] inited")
+        print("[timetask] inited")
         load_config()
         self.conf = conf()
         self.taskManager = TaskManager(self.runTimeTask)
@@ -58,7 +59,7 @@ class TimeTask(Plugin):
         #需要的格式：$time 时间 事件
         if query.startswith(command_prefix) :
             #处理任务
-            print("[TimeTask] 捕获到定时任务:{}".format(query))
+            print("[timetask] 捕获到定时任务:{}".format(query))
             #移除指令
             #示例：$time 明天 十点十分 提醒我健身
             content = query.replace(f"{command_prefix} ", "")
@@ -172,8 +173,9 @@ class TimeTask(Plugin):
         #5：fromUser - 来源user
         #6：toUser - 发送给的user
         #7：other_user_id - other_user_id
-        #8：isGroup - 0/1，是否群聊； 0=否，1=是
-        #9：原始内容 - 原始的消息体
+        #8：other_user_nickname - Other名称
+        #9：isGroup - 0/1，是否群聊； 0=否，1=是
+        #10：原始内容 - 原始的消息体
         msg: ChatMessage = e_context["context"]["msg"]
         taskInfo = ("",
                     "1", 
@@ -183,6 +185,7 @@ class TimeTask(Plugin):
                     msg.from_user_nickname,
                     msg.to_user_nickname, 
                     msg.other_user_id, 
+                    msg.other_user_nickname, 
                     str(msg.is_group), 
                     str(msg))
         #model

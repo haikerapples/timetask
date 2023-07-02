@@ -2,6 +2,7 @@
   "command_prefix": "$time",
   "debug": false,
   "time_check_rate": 1,
+  "move_historyTask_time": "04:00:00",
   "is_open_extension_function": true,
   "extension_function":
   [
