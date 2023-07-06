@@ -110,7 +110,7 @@ class timetask(Plugin):
         taskArray = ExcelTool().readExcel()
         tempArray = []
         for item in taskArray:
-            model = TimeTaskModel(item, False)
+            model = TimeTaskModel(item, None, False)
             if model.enable and model.taskId and len(model.taskId) > 0:
                 isToday = model.is_today()
                 isNowOrFeatureTime = model.is_featureTime() or model.is_nowTime()
@@ -170,26 +170,15 @@ class timetask(Plugin):
         #2：时间信息 - 格式为：HH:mm:ss
         #3：轮询信息 - 格式为：每天、每周X、YYYY-MM-DD
         #4：消息内容 - 消息内容
-        #5：fromUser - 来源user
-        #6：toUser - 发送给的user
-        #7：other_user_id - other_user_id
-        #8：other_user_nickname - Other名称
-        #9：isGroup - 0/1，是否群聊； 0=否，1=是
-        #10：原始内容 - 原始的消息体
         msg: ChatMessage = e_context["context"]["msg"]
         taskInfo = ("",
                     "1", 
                     timeStr, 
                     circleStr, 
                     eventStr, 
-                    msg.from_user_nickname,
-                    msg.to_user_nickname, 
-                    msg.other_user_id, 
-                    msg.other_user_nickname, 
-                    str(msg.is_group), 
-                    str(msg))
+                    msg)
         #model
-        taskModel = TimeTaskModel(taskInfo, True)
+        taskModel = TimeTaskModel(taskInfo, msg, True)
         #容错
         if len(taskModel.timeStr) <= 0 or len(taskModel.circleTimeStr) <= 0:
             self.replay_use_default(defaultErrorMsg, e_context)

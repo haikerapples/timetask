@@ -6,7 +6,10 @@ import logging
 import time
 import arrow
 import threading
+from typing import List
 from plugins.timetask.config import conf, load_config
+from lib import itchat
+from lib.itchat.content import *
 
 class TaskManager(object):
     
@@ -14,6 +17,9 @@ class TaskManager(object):
         super().__init__()
         #保存定时任务回调
         self.timeTaskFunc = timeTaskFunc
+        
+        #检测是否重新登录了
+        self.isRelogin = False
         
         # 创建子线程
         t = threading.Thread(target=self.pingTimeTask_in_sub_thread)
@@ -44,9 +50,8 @@ class TaskManager(object):
         #过期任务数组、现在待消费数组、未来任务数组
         historyArray, currentExpendArray, featureArray = self.getFuncArray(self.timeTasks)
         #启动时，默认迁移一次过期任务
-        obj.moveTasksToHistoryExcel(historyArray)
-        #赋值数组
-        self.timeTasks = currentExpendArray + featureArray
+        newArray = obj.moveTasksToHistoryExcel(historyArray)
+        self.convetDataToModelArray(newArray)
         
         #循环
         while True:
@@ -74,6 +79,11 @@ class TaskManager(object):
             newTimeTask = ExcelTool().moveTasksToHistoryExcel(historyArray)
             #数据刷新
             self.convetDataToModelArray(newTimeTask)
+            
+        #检测是否重新登录了
+        self.check_isRelogin()
+        if self.isRelogin:
+              return
                     
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
         timeTask_ids = '😄'.join(item.taskId for item in self.timeTasks)
@@ -96,6 +106,33 @@ class TaskManager(object):
         print(f"[timetask][定时检测]：当前时刻 - 存在定时任务, 执行消费 当前时刻任务")
         self.runTaskArray(currentExpendArray)
         
+    #检测是否重新登录了    
+    def check_isRelogin(self):
+    
+        #机器人ID
+        robot_user_id = itchat.instance.storageClass.userName
+        
+        #登录后
+        if robot_user_id is not None and len(self.timeTasks) > 0:
+            #取出任务中的一个模型
+            model : TimeTaskModel = self.timeTasks[0]
+            temp_isRelogin = robot_user_id != model.toUser_id
+           
+            if temp_isRelogin:
+                #更新为重新登录态
+                self.isRelogin = True
+                #等待登录完成
+                time.sleep(3)
+                
+                #更新userId
+                ExcelTool().update_userId()
+                tempArray = ExcelTool().readExcel()
+                self.convetDataToModelArray(tempArray)
+                
+                #更新为非重新登录态
+                self.isRelogin = False
+            
+        
     #获取功能数组    
     def getFuncArray(self, modelArray):
         #待消费数组
@@ -105,7 +142,8 @@ class TaskManager(object):
         #过期任务数组
         historyArray=[]
         #遍历检查时间
-        for model in modelArray:
+        for item in modelArray:
+            model : TimeTaskModel = item
             #是否现在时刻
             is_nowTime = model.is_nowTime()
             #是否未来时刻
@@ -128,7 +166,7 @@ class TaskManager(object):
         
           
     #执行task
-    def runTaskArray(self, modelArray: list[TimeTaskModel]):
+    def runTaskArray(self, modelArray):
         
         #执行任务列表
         for index, model in enumerate(modelArray):
@@ -158,10 +196,10 @@ class TaskManager(object):
     def convetDataToModelArray(self, dataArray):
         tempArray = []
         for item in dataArray:
-            model = TimeTaskModel(item, False)
+            model = TimeTaskModel(item, None, False)
             tempArray.append(model)
         #赋值
-        self.timeTasks : list[TimeTaskModel] = tempArray
+        self.timeTasks = tempArray
         
     #是否目标时间      
     def is_targetTime(self, timeStr):

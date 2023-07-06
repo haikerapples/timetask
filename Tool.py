@@ -4,11 +4,18 @@
 import os
 from openpyxl import Workbook
 from openpyxl import load_workbook
+from openpyxl.styles import NamedStyle
 import hashlib
 import base64
 import arrow
 import re
-from datetime import time
+from typing import List
+from datetime import time as datetime_time
+import datetime
+import time
+from lib import itchat
+from lib.itchat.content import *
+from channel.chat_message import ChatMessage
 
 class ExcelTool(object):
     __file_name = "timeTask.xlsx"
@@ -24,27 +31,40 @@ class ExcelTool(object):
         # 创建Excel
         if not os.path.exists(workbook_file_path):
             wb = Workbook()
-            column_list_first = ['A', 'B', 'C', 'D', 'J']
+            column_list_first = ['A', 'B', 'C', 'D', 'L']
             width_value_first = 20
-            column_list_two = ['E', 'F', 'G', 'H', 'I']
+            column_list_two = ['E', 'F', 'H', 'J']
             width_value_two = 40
-            width_value_three = 1000
+            column_list_three = ['G', 'I', 'K']
+            width_value_three = 70
+            width_value_four = 600
             
+            # 设置日期格式
+            date_format = NamedStyle(name='date_format')
+            date_format.number_format = 'YYYY-MM-DD'
+
             #sheet1
             ws = wb.create_sheet(sheet_name, 0)
-            # 类型处理 - 设置为字符串
+            # 类型处理
             for column in ws.columns:
-                for cell in column:
-                    cell.number_format = '@'
+                #日期格式
+                if column == "D":
+                    for cell in column:
+                        cell.style = date_format
+                #字符串        
+                else:
+                    for cell in column:
+                        cell.number_format = '@'
             
             #宽度处理 
             for column in column_list_first:
                 ws.column_dimensions[column].width = width_value_first
             for column in column_list_two:
                 ws.column_dimensions[column].width = width_value_two
-            ws.column_dimensions["K"].width = width_value_three  
-            
-                  
+            for column in column_list_three:
+                ws.column_dimensions[column].width = width_value_three
+            ws.column_dimensions["M"].width = width_value_four 
+              
             #sheet2
             ws1 = wb.create_sheet(history_sheet_name, 1)
             # 类型处理 - 设置为字符串
@@ -57,10 +77,11 @@ class ExcelTool(object):
                 ws1.column_dimensions[column].width = width_value_first
             for column in column_list_two:
                 ws1.column_dimensions[column].width = width_value_two
-            ws1.column_dimensions["K"].width = width_value_three     
+            ws1.column_dimensions["M"].width = width_value_three     
                     
             wb.save(workbook_file_path)
             print("定时Excel创建成功，文件路径为：{}".format(workbook_file_path))
+            
         else:
             wb = load_workbook(workbook_file_path)
             if not history_sheet_name in wb.sheetnames:
@@ -160,13 +181,14 @@ class ExcelTool(object):
             taskContent = ""
             #遍历
             for index, hisItem in enumerate(data):
-                 #ID是否相同
-                 if hisItem[0] == taskId:
+                model = TimeTaskModel(hisItem, None, False)
+                #ID是否相同
+                if model.taskId == taskId:
                     #置为已消费：即0
                     ws.cell(index + 1, 2).value = "0"
                     isExist = True
                     #循环信息 + 时间 + 事件内容
-                    taskContent = hisItem[3] + " " + hisItem[2] + " " + hisItem[4]
+                    taskContent = model.circleTimeStr + " " + model.timeStr + " " + model.eventStr
                     
             if isExist: 
                 #保存
@@ -194,6 +216,141 @@ class ExcelTool(object):
             
         return workbook_file_path
         
+    #更新用户ID  
+    def update_userId(self, file_name=__file_name, sheet_name=__sheet_name):
+        #是否重新登录了
+        datas = self.readExcel(file_name, sheet_name)
+        
+        if len(datas) <= 0:
+            return
+            
+        #模型数组
+        tempArray : List[TimeTaskModel] = []
+        #原始数据
+        for item in datas:
+            model = TimeTaskModel(item, None, False)
+            tempArray.append(model)
+            
+        #id字典数组：将相同目标人的ID聚合为一个数组
+        idsDic = {}
+        for model in tempArray:
+            #目标用户名称
+            target_name = model.other_user_nickname
+            if not target_name in idsDic.keys():
+                idsDic[target_name] = [model]
+            else:
+                arr = idsDic[target_name]
+                arr.append(model)
+                idsDic[target_name] = list(arr)
+        
+        #待更新的ID数组
+        if len(idsDic) <= 0:
+            return
+        
+        #原始ID ：新ID
+        oldAndNewIDDic = self.getNewId(idsDic)
+        if len(oldAndNewIDDic) <= 0:
+            return
+            
+        #更新列表数据
+        workbook_file_path = self.get_file_path(file_name)
+        wb = load_workbook(workbook_file_path)
+        ws = wb[sheet_name]
+        excel_data = list(ws.values)
+        #机器人ID
+        robot_user_id = itchat.instance.storageClass.userName
+        #遍历任务列表 - 更新数据
+        for index, item in enumerate(excel_data):
+            model = TimeTaskModel(item, None, False)
+            #目标用户ID
+            oldId = model.other_user_id
+            newId = oldAndNewIDDic.get(oldId)
+            #找到了
+            if newId is not None and len(newId) > 0:
+                model.other_user_id = newId
+                #更新ID
+                #from
+                ws.cell(index + 1, 7).value = newId
+                #to
+                ws.cell(index + 1, 9).value = robot_user_id
+                #other
+                ws.cell(index + 1, 11).value = newId
+                #替换原始信息中的ID
+                #旧的机器人ID
+                old_robot_userId = model.toUser_id
+                #原始消息体
+                originStr = model.originMsg
+                #替换旧的目标ID
+                newString = originStr.replace(oldId, newId)
+                #替换机器人ID
+                newString = newString.replace(old_robot_userId, robot_user_id)
+                ws.cell(index + 1, 13).value = newString
+                #等待写入
+                time.sleep(0.05)
+                      
+        #保存            
+        wb.save(workbook_file_path)
+        
+            
+            
+    #获取新的用户ID  
+    def getNewId(self, idsDic):
+        
+        oldAndNewIDDic = {}
+        if len(idsDic) <= 0:
+              return oldAndNewIDDic
+         
+        #好友  
+        friends = []
+        #群聊
+        chatrooms = []
+        
+        #好友处理
+        try:
+            #获取好友列表
+            friends = itchat.get_friends(update=True)[0:]
+        except ZeroDivisionError:
+            # 捕获并处理 ZeroDivisionError 异常
+            print("好友列表, 错误发生")
+        
+        #获取好友 -（id组装 旧 ： 新）
+        for friend in friends:
+            #id
+            userName = friend["UserName"]
+            NickName = friend["NickName"]
+            modelArray = idsDic.get(NickName)
+            #找到了好友
+            if modelArray is not None and len(modelArray) > 0:
+                model : TimeTaskModel = modelArray[0]
+                oldId = model.other_user_id
+                if oldId != userName:
+                    oldAndNewIDDic[oldId] = userName    
+                
+        #群聊处理       
+        try:
+            #群聊 （id组装 旧 ：新）   
+            chatrooms = itchat.get_chatrooms(update=True)[1:]
+        except ZeroDivisionError:
+            # 捕获并处理 ZeroDivisionError 异常
+            print("群聊列表, 错误发生")
+        
+        #获取群聊 - 旧 ： 新
+        for chatroom in chatrooms:
+            #id
+            userName = chatroom["UserName"]
+            NickName = chatroom["NickName"]
+            modelArray = idsDic.get(NickName)
+            #找到了群聊
+            if modelArray is not None and len(modelArray) > 0:
+                model : TimeTaskModel = modelArray[0]
+                oldId = model.other_user_id
+                if oldId != userName:
+                    oldAndNewIDDic[oldId] = userName
+                       
+        return oldAndNewIDDic         
+            
+        
+        
 
 #task模型        
 class TimeTaskModel:
@@ -204,19 +361,23 @@ class TimeTaskModel:
     #3：轮询信息 - 格式为：每天、每周N、YYYY-MM-DD
     #4：消息内容 - 消息内容
     #5：fromUser - 来源user
-    #6：toUser - 发送给的user
-    #7：other_user_id - otehrID
-    #8：other_user_nickname - Other名称
-    #9：isGroup - 0/1，是否群聊； 0=否，1=是
-    #10：原始内容 - 原始的消息体
+    #6：fromUserID - 来源user ID
+    #7：toUser - 发送给的user
+    #8：toUser id - 来源user ID
+    #9：other_user_nickname - Other名称
+    #10：other_user_id - otehrID
+    #11：isGroup - 0/1，是否群聊； 0=否，1=是
+    #12：原始内容 - 原始的消息体
     
-    def __init__(self, item, isNeedFormat: bool):
+    def __init__(self, item, msg:ChatMessage, isNeedFormat: bool):
         
         self.taskId = item[0]
         self.enable = item[1] == "1"
         timeValue = item[2]
+        
+        #时间
         tempTimeStr = ""
-        if isinstance(timeValue, time):
+        if isinstance(timeValue, datetime_time):
             # 变量是 datetime.time 类型（Excel修改后，openpyxl会自动转换为该类型，本次做修正）
             tempTimeStr = timeValue.strftime("%H:%M:%S")
         elif isinstance(timeValue, str):
@@ -224,16 +385,43 @@ class TimeTaskModel:
         else:
             # 其他类型
             print("其他类型时间，暂不支持")
-    
         self.timeStr = tempTimeStr
-        self.circleTimeStr = item[3]
+        
+        #日期
+        dayValue = item[3]
+        tempDayStr = ""
+        if isinstance(dayValue, datetime.datetime):
+            # 变量是 datetime.datetime 类型（Excel修改后，openpyxl会自动转换为该类型，本次做修正）
+            tempDayStr = dayValue.strftime("%Y-%m-%d")
+        elif isinstance(dayValue, str):
+            tempDayStr = dayValue
+        else:
+            # 其他类型
+            print("其他类型时间，暂不支持")
+        self.circleTimeStr = tempDayStr
+        
         self.eventStr = item[4]
-        self.fromUser = item[5]
-        self.toUser = item[6]
-        self.other_user_id = item[7]
-        self.other_user_nickname = item[8]
-        self.isGroup = item[9] == "1"
-        self.originMsg = item[10]
+        
+        #通过对象加载
+        if msg is not None:
+            self.fromUser = msg.from_user_nickname
+            self.fromUser_id = msg.from_user_id
+            self.toUser = msg.to_user_nickname
+            self.toUser_id = msg.to_user_id
+            self.other_user_nickname = msg.other_user_nickname
+            self.other_user_id = msg.other_user_id
+            self.isGroup = msg.is_group
+            self.originMsg = str(msg)
+        else:
+            #通过Item加载
+            self.fromUser = item[5]
+            self.fromUser_id = item[6]
+            self.toUser = item[7]
+            self.toUser_id = item[8]
+            self.other_user_nickname = item[9]
+            self.other_user_id = item[10]
+            self.isGroup = item[11] == "1"
+            self.originMsg = item[12] 
         
         #需要处理格式
         if isNeedFormat:
@@ -260,9 +448,11 @@ class TimeTaskModel:
                 self.circleTimeStr,
                 self.eventStr,
                 self.fromUser,
+                self.fromUser_id,
                 self.toUser,
-                self.other_user_id,
+                self.toUser_id,
                 self.other_user_nickname,
+                self.other_user_id,
                 "1" if self.isGroup else "0",
                 self.originMsg) 
         return temp_item
