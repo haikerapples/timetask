@@ -301,7 +301,7 @@ class timetask(Plugin):
             reply_text = e_context["reply"].content
             
         #原消息
-        if len(reply_text) <= 0:
+        if reply_text is None or len(reply_text) <= 0:
             reply_text = "⏰叮铃铃，定时任务时间已到啦~\n" + "【任务详情】：" + model.eventStr
                 
         #群聊处理

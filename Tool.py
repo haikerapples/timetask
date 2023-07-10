@@ -233,22 +233,33 @@ class ExcelTool(object):
             
         #id字典数组：将相同目标人的ID聚合为一个数组
         idsDic = {}
+        groupIdsDic = {}
         for model in tempArray:
             #目标用户名称
             target_name = model.other_user_nickname
-            if not target_name in idsDic.keys():
-                idsDic[target_name] = [model]
+            #群聊
+            if model.isGroup:
+                if not target_name in groupIdsDic.keys():
+                    groupIdsDic[target_name] = [model]
+                else:
+                    arr1 = groupIdsDic[target_name]
+                    arr1.append(model)
+                    groupIdsDic[target_name] = list(arr1) 
             else:
-                arr = idsDic[target_name]
-                arr.append(model)
-                idsDic[target_name] = list(arr)
+                #好友
+                if not target_name in idsDic.keys():
+                    idsDic[target_name] = [model]
+                else:
+                    arr2 = idsDic[target_name]
+                    arr2.append(model)
+                    idsDic[target_name] = list(arr2)
         
         #待更新的ID数组
         if len(idsDic) <= 0:
             return
         
         #原始ID ：新ID
-        oldAndNewIDDic = self.getNewId(idsDic)
+        oldAndNewIDDic = self.getNewId(idsDic, groupIdsDic)
         if len(oldAndNewIDDic) <= 0:
             return
             
@@ -294,11 +305,9 @@ class ExcelTool(object):
             
             
     #获取新的用户ID  
-    def getNewId(self, idsDic):
+    def getNewId(self, idsDic, groupIdsDic):
         
         oldAndNewIDDic = {}
-        if len(idsDic) <= 0:
-              return oldAndNewIDDic
          
         #好友  
         friends = []
@@ -306,46 +315,50 @@ class ExcelTool(object):
         chatrooms = []
         
         #好友处理
-        try:
-            #获取好友列表
-            friends = itchat.get_friends(update=True)[0:]
-        except ZeroDivisionError:
-            # 捕获并处理 ZeroDivisionError 异常
-            print("好友列表, 错误发生")
-        
-        #获取好友 -（id组装 旧 ： 新）
-        for friend in friends:
-            #id
-            userName = friend["UserName"]
-            NickName = friend["NickName"]
-            modelArray = idsDic.get(NickName)
-            #找到了好友
-            if modelArray is not None and len(modelArray) > 0:
-                model : TimeTaskModel = modelArray[0]
-                oldId = model.other_user_id
-                if oldId != userName:
-                    oldAndNewIDDic[oldId] = userName    
-                
-        #群聊处理       
-        try:
-            #群聊 （id组装 旧 ：新）   
-            chatrooms = itchat.get_chatrooms(update=True)[1:]
-        except ZeroDivisionError:
-            # 捕获并处理 ZeroDivisionError 异常
-            print("群聊列表, 错误发生")
-        
-        #获取群聊 - 旧 ： 新
-        for chatroom in chatrooms:
-            #id
-            userName = chatroom["UserName"]
-            NickName = chatroom["NickName"]
-            modelArray = idsDic.get(NickName)
-            #找到了群聊
-            if modelArray is not None and len(modelArray) > 0:
-                model : TimeTaskModel = modelArray[0]
-                oldId = model.other_user_id
-                if oldId != userName:
-                    oldAndNewIDDic[oldId] = userName
+        if len(idsDic) > 0:   
+            #好友处理
+            try:
+                #获取好友列表
+                friends = itchat.get_friends(update=True)[0:]
+            except ZeroDivisionError:
+                # 捕获并处理 ZeroDivisionError 异常
+                print("好友列表, 错误发生")
+            
+            #获取好友 -（id组装 旧 ： 新）
+            for friend in friends:
+                #id
+                userName = friend["UserName"]
+                NickName = friend["NickName"]
+                modelArray = idsDic.get(NickName)
+                #找到了好友
+                if modelArray is not None and len(modelArray) > 0:
+                    model : TimeTaskModel = modelArray[0]
+                    oldId = model.other_user_id
+                    if oldId != userName:
+                        oldAndNewIDDic[oldId] = userName    
+         
+        #群聊处理  
+        if len(groupIdsDic) > 0:          
+            #群聊处理       
+            try:
+                #群聊 （id组装 旧 ：新）   
+                chatrooms = itchat.get_chatrooms(update=True)[1:]
+            except ZeroDivisionError:
+                # 捕获并处理 ZeroDivisionError 异常
+                print("群聊列表, 错误发生")
+            
+            #获取群聊 - 旧 ： 新
+            for chatroom in chatrooms:
+                #id
+                userName = chatroom["UserName"]
+                NickName = chatroom["NickName"]
+                modelArray = groupIdsDic.get(NickName)
+                #找到了群聊
+                if modelArray is not None and len(modelArray) > 0:
+                    model : TimeTaskModel = modelArray[0]
+                    oldId = model.other_user_id
+                    if oldId != userName:
+                        oldAndNewIDDic[oldId] = userName
                        
         return oldAndNewIDDic         
             
