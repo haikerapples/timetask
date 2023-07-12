@@ -168,9 +168,13 @@ class TaskManager(object):
     #执行task
     def runTaskArray(self, modelArray):
         
-        #执行任务列表
-        for index, model in enumerate(modelArray):
-            self.runTaskItem(model)
+        try:
+            #执行任务列表
+            for index, model in enumerate(modelArray):
+                self.runTaskItem(model)
+        except Exception as e:
+            print(f"执行定时任务，发生了错误：{e}")
+            
                 
     #执行task
     def runTaskItem(self, model: TimeTaskModel):

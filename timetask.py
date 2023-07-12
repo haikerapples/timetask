@@ -15,6 +15,10 @@ import re
 import arrow
 from plugins.timetask.Tool import ExcelTool
 from bridge.bridge import Bridge
+import config as RobotConfig
+import requests
+import io
+import time
 
 class TimeTaskRemindType(Enum):
     NO_Task = 1           #无任务
@@ -213,21 +217,32 @@ class timetask(Plugin):
         e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
         
     #使用自定义回复
-    def replay_use_custom(self, model: TimeTaskModel, context: Context):
-        reply_text = ""
-        query = context.content
-        if len(query) <= 0:
-             reply_text = "查询的内容为空😭，请核查！" 
-        else:
-            replay = Bridge().fetch_reply_content(query, context)
-            reply_text = replay.content
+    def replay_use_custom(self, model: TimeTaskModel, reply_text: str , replyType: ReplyType, retry_cnt=0):
+        
+        try:    
+            receiver = model.other_user_id
+            if replyType == ReplyType.TEXT:
+                if len(reply_text) <= 0:
+                    reply_text = model.eventStr  
+                #群聊处理
+                if model.isGroup:
+                    reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
+                itchat.send(reply_text, toUserName=receiver)
+                
+            elif replyType == ReplyType.IMAGE_URL:
+                img_url = reply_text
+                pic_res = requests.get(img_url, stream=True)
+                image_storage = io.BytesIO()
+                for block in pic_res.iter_content(1024):
+                    image_storage.write(block)
+                image_storage.seek(0)
+                itchat.send_image(image_storage, toUserName=receiver)
+                
+        except Exception as e:
+            if retry_cnt < 2:
+                time.sleep(3 + 3 * retry_cnt)
+                self.replay_use_custom(model, reply_text, replyType, retry_cnt + 1)
             
-        #群聊处理
-        if model.isGroup:
-            reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
-            
-        receiver = model.other_user_id
-        itchat.send(reply_text, toUserName=receiver)
         
     #执行定时task
     def runTimeTask(self, model: TimeTaskModel):
@@ -277,13 +292,20 @@ class timetask(Plugin):
                 content_dict["receiver"] = model.other_user_id
                 content_dict["session_id"] = model.other_user_id
                 content_dict["isgroup"] = model.isGroup
-                msg :ChatMessage = ChatMessage(content_dict)
+                msg : ChatMessage = ChatMessage(content_dict)
                 content_dict["msg"] = msg
                 context = Context(ContextType.TEXT, event_content, content_dict)
                 
                 #GPT处理
                 if isGPT:
-                    self.replay_use_custom(model, context)
+                    content = context.content.strip()
+                    imgPrefix = RobotConfig.conf().get("image_create_prefix")
+                    img_match_prefix = self.check_prefix(content, imgPrefix)
+                    if img_match_prefix:
+                        content = content.replace(img_match_prefix, "", 1)
+                        context.type = ContextType.IMAGE_CREATE
+                    replay = Bridge().fetch_reply_content(content, context)
+                    self.replay_use_custom(model, replay.content, replay.type)
                     return
             
                 #检测插件是否会消费该消息
@@ -293,24 +315,34 @@ class timetask(Plugin):
                         {"channel": self, "context": context, "reply": Reply()},
                     )
                 )
-        
+            
         #回复处理
         reply_text = ""
         #插件消息
         if e_context:
-            reply_text = e_context["reply"].content
+            reply = e_context["reply"]
+            if reply and reply.type:
+                #消息已被消费
+                if e_context.is_pass():
+                      return
+                else:  
+                    reply_text = reply.content
             
         #原消息
         if reply_text is None or len(reply_text) <= 0:
             reply_text = "⏰叮铃铃，定时任务时间已到啦~\n" + "【任务详情】：" + model.eventStr
                 
-        #群聊处理
-        if model.isGroup:
-            reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
-            
-        receiver = model.other_user_id
-        itchat.send(reply_text, toUserName=receiver)
+        #消息回复
+        self.replay_use_custom(model, reply_text, ReplyType.TEXT)
 
+
+    def check_prefix(self, content, prefix_list):
+        if not prefix_list:
+            return None
+        for prefix in prefix_list:
+            if content.startswith(prefix):
+                return prefix
+        return None
 
     # 自定义排序函数，将字符串解析为 arrow 对象，并按时间进行排序
     def custom_sort(self, time):
