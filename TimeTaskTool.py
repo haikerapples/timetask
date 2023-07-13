@@ -209,7 +209,7 @@ class TaskManager(object):
     def is_targetTime(self, timeStr):
         tempTimeStr = timeStr
         #如果以00结尾，对比精准度为分钟
-        if tempTimeStr.count(":") == 2 and tempTimeStr.endswith("00"):
+        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
            return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
         #对比精准到秒 
         tempValue = arrow.now().format('HH:mm:ss') == tempTimeStr

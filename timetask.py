@@ -217,7 +217,7 @@ class timetask(Plugin):
         e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
         
     #使用自定义回复
-    def replay_use_custom(self, model: TimeTaskModel, reply_text: str , replyType: ReplyType, retry_cnt=0):
+    def replay_use_custom(self, model: TimeTaskModel, reply_text: str, replyType: ReplyType, retry_cnt=0):
         
         try:    
             receiver = model.other_user_id
