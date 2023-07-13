@@ -321,12 +321,8 @@ class timetask(Plugin):
         #插件消息
         if e_context:
             reply = e_context["reply"]
-            if reply and reply.type:
-                #消息已被消费
-                if e_context.is_pass():
-                      return
-                else:  
-                    reply_text = reply.content
+            if reply and reply.type: 
+                reply_text = reply.content
             
         #原消息
         if reply_text is None or len(reply_text) <= 0:
