@@ -211,6 +211,8 @@ class TaskManager(object):
         #如果以00结尾，对比精准度为分钟
         if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
            return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
-        #对比精准到秒 
-        tempValue = arrow.now().format('HH:mm:ss') == tempTimeStr
-        return tempValue     
+        #对比精准到分（忽略秒）
+        current_time = arrow.now().format('HH:mm')
+        task_time = arrow.get(tempTimeStr, "HH:mm:ss").format("HH:mm")
+        tempValue = current_time == task_time
+        return tempValue 

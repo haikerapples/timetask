@@ -480,23 +480,28 @@ class TimeTaskModel:
         return short_id
     
     
-    #是否现在时间      
+    #是否现在时间(精确到分钟)    
     def is_nowTime(self):
         tempTimeStr = self.timeStr
         #如果以00结尾，对比精准度为分钟
         if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
-           return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
-        #对比精准到秒 
-        tempValue = arrow.now().format('HH:mm:ss') == tempTimeStr
+           tempTimeStr = tempTimeStr + ":00"
+        #对比精准到分（忽略秒）
+        current_time = arrow.now().format('HH:mm')
+        task_time = arrow.get(tempTimeStr, "HH:mm:ss").format("HH:mm")
+        tempValue = current_time == task_time
         return tempValue 
     
-    #是否未来时间      
+    #是否未来时间(精确到分钟) 
     def is_featureTime(self):
         tempTimeStr = self.timeStr
         #如果以00结尾，对比精准度为分钟
         if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
            tempTimeStr = tempTimeStr + ":00"
-        tempValue = arrow.get(tempTimeStr, 'HH:mm:ss').time() > arrow.now().time()
+        #对比精准到分（忽略秒）
+        current_time = arrow.now().replace(second=0, microsecond=0).time()
+        task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
+        tempValue = task_time > current_time
         return tempValue 
     
     #是否未来day      
