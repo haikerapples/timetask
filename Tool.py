@@ -125,7 +125,7 @@ class ExcelTool(object):
             for i, item in enumerate(data):
                  #任务ID
                  taskId = item[0]
-                 for j, hisItem in enumerate(tasks):
+                 for _, hisItem in enumerate(tasks):
                     #历史任务ID
                     his_taskId = hisItem[0]
                     if taskId == his_taskId:
@@ -135,7 +135,7 @@ class ExcelTool(object):
             wb.save(workbook_file_path)
             
             #添加历史列表
-            for index, t in enumerate(tasks):
+            for _, t in enumerate(tasks):
                 self.addItemToExcel(t, file_name, history_sheet_name)     
                 
             print(f"将任务Sheet({sheet_name})中的 过期任务 迁移指 -> 历史Sheet({history_sheet_name}) 完毕~")            
@@ -170,7 +170,7 @@ class ExcelTool(object):
         
         
     # 写入数据
-    def write_columnValue_withTaskId_toExcel(self, taskId, column: int, targetValue: str,  file_name=__file_name, sheet_name=__sheet_name):
+    def write_columnValue_withTaskId_toExcel(self, taskId, column: int, columnValue: str,  file_name=__file_name, sheet_name=__sheet_name):
         #读取数据
         data = self.readExcel(file_name, sheet_name)
         if len(data) > 0:
@@ -186,7 +186,7 @@ class ExcelTool(object):
                 #ID是否相同
                 if model.taskId == taskId:
                     #置为已消费：即0
-                    ws.cell(index + 1, column).value = targetValue
+                    ws.cell(index + 1, column).value = columnValue
                     isExist = True
                     taskContent = model
                     
@@ -306,9 +306,7 @@ class ExcelTool(object):
             
     #获取新的用户ID  
     def getNewId(self, idsDic, groupIdsDic):
-        
         oldAndNewIDDic = {}
-         
         #好友  
         friends = []
         #群聊
@@ -361,8 +359,6 @@ class ExcelTool(object):
                         oldAndNewIDDic[oldId] = userName
                        
         return oldAndNewIDDic         
-            
-        
         
 
 #task模型        
@@ -441,8 +437,7 @@ class TimeTaskModel:
             self.isGroup = item[11] == "1"
             self.originMsg = item[12]
             if len(item) > 13:
-                self.is_today_consumed = item[13] == "1"
-            
+                self.is_today_consumed = item[13] == "1"         
         
         #cron表达式
         self.cron_expression = self.get_cron_expression()
@@ -468,6 +463,11 @@ class TimeTaskModel:
                 g_time = self.get_time(self.timeStr)
                 self.timeStr = g_time
                 self.circleTimeStr = g_circle
+                
+        #今日消费态优化（默认程序在00:00会将消费态回写，但是若程序被kill,则下次启动的本地缓存未正确回写，此处需要容错）
+        if self.is_today_consumed:
+            if self.is_today() and (self.is_nowTime() or self.is_featureTime()):
+                self.is_today_consumed = False
                 
         #数组为空
         self.cron_today_times = []
