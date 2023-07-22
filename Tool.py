@@ -169,8 +169,8 @@ class ExcelTool(object):
             return []
         
         
-    # 置为失效
-    def disableItemToExcel(self, taskId, file_name=__file_name, sheet_name=__sheet_name):
+    # 写入数据
+    def write_columnValue_withTaskId_toExcel(self, taskId, column: int, targetValue: str,  file_name=__file_name, sheet_name=__sheet_name):
         #读取数据
         data = self.readExcel(file_name, sheet_name)
         if len(data) > 0:
@@ -186,7 +186,7 @@ class ExcelTool(object):
                 #ID是否相同
                 if model.taskId == taskId:
                     #置为已消费：即0
-                    ws.cell(index + 1, 2).value = "0"
+                    ws.cell(index + 1, column).value = targetValue
                     isExist = True
                     taskContent = model
                     
@@ -388,6 +388,9 @@ class TimeTaskModel:
         self.taskId = item[0]
         self.enable = item[1] == "1"
         
+        #是否今日已被消费
+        self.is_today_consumed = False
+        
         #时间信息
         timeValue = item[2]
         tempTimeStr = ""
@@ -436,7 +439,10 @@ class TimeTaskModel:
             self.other_user_nickname = item[9]
             self.other_user_id = item[10]
             self.isGroup = item[11] == "1"
-            self.originMsg = item[12] 
+            self.originMsg = item[12]
+            if len(item) > 13:
+                self.is_today_consumed = item[13] == "1"
+            
         
         #cron表达式
         self.cron_expression = self.get_cron_expression()
@@ -509,7 +515,8 @@ class TimeTaskModel:
                 self.other_user_nickname,
                 self.other_user_id,
                 "1" if self.isGroup else "0",
-                self.originMsg) 
+                self.originMsg,
+                "1" if self.is_today_consumed else "0") 
         return temp_item
             
     #计算唯一ID        

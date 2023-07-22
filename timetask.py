@@ -34,7 +34,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=500,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.0",
+    version="2.1",
     author="haikerwang",
 )
     
@@ -88,7 +88,7 @@ class timetask(Plugin):
         wordsArray = content.split(" ")
         #任务Id
         taskId = wordsArray[1]
-        isExist, taskModel = ExcelTool().disableItemToExcel(taskId)
+        isExist, taskModel = ExcelTool().write_columnValue_withTaskId_toExcel(taskId, 2, "0")
         taskContent = "未知"
         if taskModel:
             taskContent = f"{taskModel.circleTimeStr} {taskModel.timeStr} {taskModel.eventStr}"

@@ -85,8 +85,8 @@ class TaskManager(object):
             
         #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
         if self.is_targetTime("00:00"):
-            #刷新cron时间任务
-            self.refresh_cron_times(featureArray)
+            #刷新cron时间任务、周期任务的今天执行态
+            self.refresh_times(featureArray)
                     
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
         timeTask_ids = '😄'.join(item.taskId for item in self.timeTasks)
@@ -146,6 +146,10 @@ class TaskManager(object):
         
     #迁移历史任务   
     def moveTask_toHistory(self, modelArray):
+        if len(modelArray) <= 0:
+            print("当前无过期任务，不触发迁移")
+            return
+          
         #当前时间的小时：分钟
         current_time_hour_min = arrow.now().format('HH:mm')
         #执行中 - 标识符
@@ -186,8 +190,8 @@ class TaskManager(object):
                 self.moveHistoryTask_identifier == ""
                 
                 
-    #刷新cron任务   
-    def refresh_cron_times(self, modelArray):
+    #刷新c任务   
+    def refresh_times(self, modelArray):
         #当前时间的小时：分钟
         current_time_hour_min = arrow.now().format('HH:mm')
         #执行中 - 标识符
@@ -208,6 +212,9 @@ class TaskManager(object):
                 #cron类型
                 if taskModel.isCron_time():
                     taskModel.get_todayCron_times()
+                else:
+                    taskModel.is_today_consumed = False
+                    ExcelTool().write_columnValue_withTaskId_toExcel(taskModel.taskId, 14, "0")
             #置为end
             self.refreshCronTask_identifier = identifier_end
             
@@ -255,16 +262,23 @@ class TaskManager(object):
                 #由于一个model既可以是当前的任务，又可能是以后得任务，所以这里对一个model同时判定现在和未来的判定
                 #是否现在时刻的任务
                 if is_nowTime and is_today:
-                    currentExpendArray.append(model)
-                    isHistory = False
                     #精度为分钟，cron中消费本次任务
-                    if model.isCron_time() and nowTime in model.cron_today_times:
-                        model.cron_today_times.remove(nowTime)
+                    if model.isCron_time():
+                       if nowTime in model.cron_today_times:
+                            model.cron_today_times.remove(nowTime)
+                            currentExpendArray.append(model)
+                            isHistory = False
+                        
+                    #今天未被消费
+                    elif not model.is_today_consumed:
+                        currentExpendArray.append(model)
+                        isHistory = False
+                        model.is_today_consumed = True       
                 
                 #是否当前时刻后面待消费任务
                 if (is_featureTime and is_today) or is_featureDay:
                     featureArray.append(model)
-                    isHistory = False
+                    isHistory = False                     
                 
                 #存入历史数组
                 if isHistory:
@@ -279,7 +293,7 @@ class TaskManager(object):
     def runTaskArray(self, modelArray):
         try:
             #执行任务列表
-            for index, model in enumerate(modelArray):
+            for _, model in enumerate(modelArray):
                 self.runTaskItem(model)
         except Exception as e:
             print(f"执行定时任务，发生了错误：{e}")
@@ -287,6 +301,12 @@ class TaskManager(object):
                 
     #执行task
     def runTaskItem(self, model: TimeTaskModel):
+        #非cron，置为已消费
+        if not model.isCron_time():
+            model.is_today_consumed = True
+            #置为消费
+            ExcelTool().write_columnValue_withTaskId_toExcel(model.taskId, 14, "1")
+        
         print(f"😄执行定时任务:【{model.taskId}】，任务详情：{model.circleTimeStr} {model.timeStr} {model.eventStr}")
         #回调定时任务执行
         self.timeTaskFunc(model)
@@ -294,7 +314,7 @@ class TaskManager(object):
         #任务消费
         if not model.is_featureDay():
             obj = ExcelTool()
-            obj.disableItemToExcel(model.taskId)
+            obj.write_columnValue_withTaskId_toExcel(model.taskId , 2, "0")
             #刷新数据
             self.refreshDataFromExcel()
         
