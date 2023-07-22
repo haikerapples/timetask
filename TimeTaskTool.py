@@ -18,9 +18,6 @@ class TaskManager(object):
         #保存定时任务回调
         self.timeTaskFunc = timeTaskFunc
         
-        #检测是否重新登录了
-        self.isRelogin = False
-        
         # 创建子线程
         t = threading.Thread(target=self.pingTimeTask_in_sub_thread)
         t.setDaemon(True) 
@@ -28,6 +25,17 @@ class TaskManager(object):
         
     # 定义子线程函数
     def pingTimeTask_in_sub_thread(self):
+        #延迟5秒后再检测，让初始化任务执行完
+        time.sleep(5)
+        
+        #检测是否重新登录了
+        self.isRelogin = False
+        
+        #迁移任务的标识符：用于标识在目标时间，只迁移一次
+        self.moveHistoryTask_identifier = ""
+        
+        #刷新cron任务的标识符：用于标识在目标时间，只刷新一次
+        self.refreshCronTask_identifier = ""
         
         #配置加载
         load_config()
@@ -37,21 +45,16 @@ class TaskManager(object):
         self.move_historyTask_time = self.conf.get("move_historyTask_time", "04:00:00")
         #默认每秒检测一次
         self.time_check_rate = self.conf.get("time_check_rate", 1)
-        #是否需要将过期任务移除近历史数据
-        self.isMoveTask_toHistory = False
         
         #excel创建
         obj = ExcelTool()
         obj.create_excel()
         #任务数组
-        tempArray = obj.readExcel()
-        #转化数组
-        self.convetDataToModelArray(tempArray)
+        self.refreshDataFromExcel()
         #过期任务数组、现在待消费数组、未来任务数组
-        historyArray, currentExpendArray, featureArray = self.getFuncArray(self.timeTasks)
+        historyArray, _, _ = self.getFuncArray(self.timeTasks)
         #启动时，默认迁移一次过期任务
-        newArray = obj.moveTasksToHistoryExcel(historyArray)
-        self.convetDataToModelArray(newArray)
+        self.moveTask_toHistory(historyArray)
         
         #循环
         while True:
@@ -62,28 +65,28 @@ class TaskManager(object):
     #时间检查
     def timeCheck(self):
         #任务数组
-        modelArray = self.timeTasks
-        if len(modelArray) <= 0:
+        if len(self.timeTasks) <= 0:
+            return
+        
+        #检测是否重新登录了
+        self.check_isRelogin()
+        #重新登录、未登录、数组为空，均跳过
+        if self.isRelogin:
             return
         
         #过期任务数组、现在待消费数组、未来任务数组
+        modelArray = self.timeTasks
         historyArray, currentExpendArray, featureArray = self.getFuncArray(modelArray)
         
-        #是否目标时间
+        #是否到了迁移历史任务 - 目标时间
         if self.is_targetTime(self.move_historyTask_time):
-            self.isMoveTask_toHistory = True
-                        
-        #迁移过期任务
-        if self.isMoveTask_toHistory and len(historyArray) > 0:
-            self.isMoveTask_toHistory = False
-            newTimeTask = ExcelTool().moveTasksToHistoryExcel(historyArray)
-            #数据刷新
-            self.convetDataToModelArray(newTimeTask)
+            #迁移过期任务
+            self.moveTask_toHistory(historyArray)
             
-        #检测是否重新登录了
-        self.check_isRelogin()
-        if self.isRelogin:
-              return
+        #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
+        if self.is_targetTime("00:00"):
+            #刷新cron时间任务
+            self.refresh_cron_times(featureArray)
                     
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
         timeTask_ids = '😄'.join(item.taskId for item in self.timeTasks)
@@ -106,9 +109,9 @@ class TaskManager(object):
         print(f"[timetask][定时检测]：当前时刻 - 存在定时任务, 执行消费 当前时刻任务")
         self.runTaskArray(currentExpendArray)
         
+        
     #检测是否重新登录了    
     def check_isRelogin(self):
-    
         #机器人ID
         robot_user_id = itchat.instance.storageClass.userName
         
@@ -126,13 +129,106 @@ class TaskManager(object):
                 
                 #更新userId
                 ExcelTool().update_userId()
-                tempArray = ExcelTool().readExcel()
-                self.convetDataToModelArray(tempArray)
+                #刷新数据
+                self.refreshDataFromExcel()
                 
                 #更新为非重新登录态
                 self.isRelogin = False
-            
+        else:
+            #置为重新登录态
+            self.isRelogin = True      
         
+            
+    #拉取Excel最新数据    
+    def refreshDataFromExcel(self):
+        tempArray = ExcelTool().readExcel()
+        self.convetDataToModelArray(tempArray) 
+        
+    #迁移历史任务   
+    def moveTask_toHistory(self, modelArray):
+        #当前时间的小时：分钟
+        current_time_hour_min = arrow.now().format('HH:mm')
+        #执行中 - 标识符
+        identifier_running = f"{current_time_hour_min}_running"
+        #结束 - 标识符
+        identifier_end = f"{current_time_hour_min}_end"
+        
+        #当前状态
+        current_task_state = self.moveHistoryTask_identifier
+        
+        #未执行
+        if current_task_state == "":
+            #置为执行中
+            self.moveHistoryTask_identifier = identifier_running
+            #迁移任务
+            newTimeTask = ExcelTool().moveTasksToHistoryExcel(modelArray)
+            #数据刷新
+            self.convetDataToModelArray(newTimeTask)
+            #置为end
+            self.moveHistoryTask_identifier = identifier_end
+            
+        #执行中    
+        elif current_task_state == identifier_running:
+            return
+        
+        #执行完成
+        elif current_task_state == identifier_end:
+            self.moveHistoryTask_identifier == ""
+            
+        #容错：如果时间未跳动，则正常命中【执行完成】； 异常时间跳动时，则比较时间
+        elif "_end" in current_task_state:
+            #标识符中的时间
+            tempTimeStr = current_task_state.replace("_end", ":00")
+            current_time = arrow.now().replace(second=0, microsecond=0).time()
+            task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
+            tempValue = task_time < current_time
+            if tempValue:
+                self.moveHistoryTask_identifier == ""
+                
+                
+    #刷新cron任务   
+    def refresh_cron_times(self, modelArray):
+        #当前时间的小时：分钟
+        current_time_hour_min = arrow.now().format('HH:mm')
+        #执行中 - 标识符
+        identifier_running = f"{current_time_hour_min}_running"
+        #结束 - 标识符
+        identifier_end = f"{current_time_hour_min}_end"
+        
+        #当前状态
+        current_task_state = self.refreshCronTask_identifier
+        
+        #未执行
+        if current_task_state == "":
+            #置为执行中
+            self.refreshCronTask_identifier = identifier_running
+            #刷新任务
+            for m in modelArray:
+                taskModel : TimeTaskModel = m
+                #cron类型
+                if taskModel.isCron_time():
+                    taskModel.get_todayCron_times()
+            #置为end
+            self.refreshCronTask_identifier = identifier_end
+            
+        #执行中    
+        elif current_task_state == identifier_running:
+            return
+        
+        #执行完成
+        elif current_task_state == identifier_end:
+            self.refreshCronTask_identifier == ""
+            
+        #容错：如果时间未跳动，则正常命中【执行完成】； 异常时间跳动时，则比较时间
+        elif "_end" in current_task_state:
+            #标识符中的时间
+            tempTimeStr = current_task_state.replace("_end", ":00")
+            current_time = arrow.now().replace(second=0, microsecond=0).time()
+            task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
+            tempValue = task_time < current_time
+            if tempValue:
+                self.refreshCronTask_identifier == ""
+       
     #获取功能数组    
     def getFuncArray(self, modelArray):
         #待消费数组
@@ -144,20 +240,34 @@ class TaskManager(object):
         #遍历检查时间
         for item in modelArray:
             model : TimeTaskModel = item
-            #是否现在时刻
-            is_nowTime = model.is_nowTime()
-            #是否未来时刻
-            is_featureTime = model.is_featureTime()
-            #是否today
-            is_today = model.is_today()
-            #是否未来day
-            is_featureDay = model.is_featureDay()
             if model.enable:
+                #是否现在时刻
+                is_nowTime, nowTime = model.is_nowTime()
+                #是否未来时刻
+                is_featureTime = model.is_featureTime()
+                #是否today
+                is_today = model.is_today()
+                #是否未来day
+                is_featureDay = model.is_featureDay()
+            
+                #是否历史
+                isHistory = True
+                #由于一个model既可以是当前的任务，又可能是以后得任务，所以这里对一个model同时判定现在和未来的判定
+                #是否现在时刻的任务
                 if is_nowTime and is_today:
                     currentExpendArray.append(model)
-                elif (is_featureTime and is_today) or is_featureDay:
+                    isHistory = False
+                    #精度为分钟，cron中消费本次任务
+                    if model.isCron_time() and nowTime in model.cron_today_times:
+                        model.cron_today_times.remove(nowTime)
+                
+                #是否当前时刻后面待消费任务
+                if (is_featureTime and is_today) or is_featureDay:
                     featureArray.append(model)
-                else:
+                    isHistory = False
+                
+                #存入历史数组
+                if isHistory:
                     historyArray.append(model.get_formatItem())
             else:
                 historyArray.append(model.get_formatItem())  
@@ -167,7 +277,6 @@ class TaskManager(object):
           
     #执行task
     def runTaskArray(self, modelArray):
-        
         try:
             #执行任务列表
             for index, model in enumerate(modelArray):
@@ -186,9 +295,8 @@ class TaskManager(object):
         if not model.is_featureDay():
             obj = ExcelTool()
             obj.disableItemToExcel(model.taskId)
-            #重载内存数组
-            tempArray = obj.readExcel()
-            self.convetDataToModelArray(tempArray)
+            #刷新数据
+            self.refreshDataFromExcel()
         
     #添加任务
     def addTask(self, taskModel: TimeTaskModel):
@@ -200,7 +308,7 @@ class TaskManager(object):
     def convetDataToModelArray(self, dataArray):
         tempArray = []
         for item in dataArray:
-            model = TimeTaskModel(item, None, False)
+            model = TimeTaskModel(item, None, False, True)
             tempArray.append(model)
         #赋值
         self.timeTasks = tempArray
@@ -208,11 +316,14 @@ class TaskManager(object):
     #是否目标时间      
     def is_targetTime(self, timeStr):
         tempTimeStr = timeStr
-        #如果以00结尾，对比精准度为分钟
-        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
-           return (arrow.now().format('HH:mm') + ":00") == tempTimeStr
         #对比精准到分（忽略秒）
         current_time = arrow.now().format('HH:mm')
+        
+        #如果是分钟
+        if tempTimeStr.count(":") == 1:
+           tempTimeStr = tempTimeStr + ":00"
+        
+        #转为分钟时间
         task_time = arrow.get(tempTimeStr, "HH:mm:ss").format("HH:mm")
         tempValue = current_time == task_time
         return tempValue 

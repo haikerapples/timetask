@@ -10,12 +10,13 @@ import base64
 import arrow
 import re
 from typing import List
-from datetime import time as datetime_time
-import datetime
 import time
+from datetime import datetime
 from lib import itchat
 from lib.itchat.content import *
 from channel.chat_message import ChatMessage
+from croniter import croniter
+import threading
 
 class ExcelTool(object):
     __file_name = "timeTask.xlsx"
@@ -178,7 +179,7 @@ class ExcelTool(object):
             wb = load_workbook(workbook_file_path)
             ws = wb[sheet_name]
             isExist = False
-            taskContent = ""
+            taskContent = None
             #遍历
             for index, hisItem in enumerate(data):
                 model = TimeTaskModel(hisItem, None, False)
@@ -187,8 +188,7 @@ class ExcelTool(object):
                     #置为已消费：即0
                     ws.cell(index + 1, 2).value = "0"
                     isExist = True
-                    #循环信息 + 时间 + 事件内容
-                    taskContent = model.circleTimeStr + " " + model.timeStr + " " + model.eventStr
+                    taskContent = model
                     
             if isExist: 
                 #保存
@@ -197,7 +197,7 @@ class ExcelTool(object):
             return isExist, taskContent
         else:
             print("timeTask文件无数据, 消费数据失败")
-            return False, ""
+            return False, None
     
     
     #获取文件路径      
@@ -382,15 +382,16 @@ class TimeTaskModel:
     #11：isGroup - 0/1，是否群聊； 0=否，1=是
     #12：原始内容 - 原始的消息体
     
-    def __init__(self, item, msg:ChatMessage, isNeedFormat: bool):
+    def __init__(self, item, msg:ChatMessage, isNeedFormat: bool, isNeedCalculateCron = False):
         
+        self.isNeedCalculateCron = isNeedCalculateCron
         self.taskId = item[0]
         self.enable = item[1] == "1"
-        timeValue = item[2]
         
-        #时间
+        #时间信息
+        timeValue = item[2]
         tempTimeStr = ""
-        if isinstance(timeValue, datetime_time):
+        if isinstance(timeValue, datetime):
             # 变量是 datetime.time 类型（Excel修改后，openpyxl会自动转换为该类型，本次做修正）
             tempTimeStr = timeValue.strftime("%H:%M:%S")
         elif isinstance(timeValue, str):
@@ -403,7 +404,7 @@ class TimeTaskModel:
         #日期
         dayValue = item[3]
         tempDayStr = ""
-        if isinstance(dayValue, datetime.datetime):
+        if isinstance(dayValue, datetime):
             # 变量是 datetime.datetime 类型（Excel修改后，openpyxl会自动转换为该类型，本次做修正）
             tempDayStr = dayValue.strftime("%Y-%m-%d")
         elif isinstance(dayValue, str):
@@ -413,6 +414,7 @@ class TimeTaskModel:
             print("其他类型时间，暂不支持")
         self.circleTimeStr = tempDayStr
         
+        #事件
         self.eventStr = item[4]
         
         #通过对象加载
@@ -436,6 +438,9 @@ class TimeTaskModel:
             self.isGroup = item[11] == "1"
             self.originMsg = item[12] 
         
+        #cron表达式
+        self.cron_expression = self.get_cron_expression()
+        
         #需要处理格式
         if isNeedFormat:
             #计算内容ID (使用不可变的内容计算，去除元素：enable 会变、originMsg中有时间戳)
@@ -446,12 +451,49 @@ class TimeTaskModel:
             print(f'消息体：{temp_content}， 唯一ID：{short_id}')
             self.taskId = short_id
             
-            #入库的周期、time
-            g_circle = self.get_cicleDay(self.circleTimeStr)
-            g_time = self.get_time(self.timeStr)
-            self.timeStr = g_time
-            self.circleTimeStr = g_circle
+            #周期、time
+            #cron表达式
+            if self.isCron_time():
+                print("cron 表达式")
+                
+            else:
+                #正常的周期、时间
+                g_circle = self.get_cicleDay(self.circleTimeStr)
+                g_time = self.get_time(self.timeStr)
+                self.timeStr = g_time
+                self.circleTimeStr = g_circle
+                
+        #数组为空
+        self.cron_today_times = []
         
+        #计算cron今天的时间点
+        if self.isNeedCalculateCron and self.isCron_time() and self.enable:
+            # 创建子线程
+            t = threading.Thread(target=self.get_todayCron_times)
+            t.setDaemon(True) 
+            t.start() 
+     
+    #获取今天cron时间  
+    def get_todayCron_times(self):
+        if not self.enable:
+              return
+          
+        self.cron_today_times = []
+        #校验cron格式
+        if self.isValid_Cron_time():
+            # 获取当前时间（忽略秒数）
+            current_time = arrow.now().replace(second=0, microsecond=0)
+            # 创建一个 croniter 对象
+            cron = croniter(self.cron_expression, current_time.datetime)
+            next_time = cron.get_next(datetime)
+            while next_time.date() == current_time.date():
+                #记录时间（时：分）
+                next_time_hour_minut = next_time.strftime('%H:%M')
+                self.cron_today_times.append(next_time_hour_minut)
+                next_time = cron.get_next(datetime)
+            
+            #打印满足今天的cron的时间点    
+            print(f"cron表达式为：{self.cron_expression}, 满足今天的时间节点为：{self.cron_today_times}")
         
     #获取格式化后的Item
     def get_formatItem(self):
@@ -482,40 +524,65 @@ class TimeTaskModel:
     
     #是否现在时间(精确到分钟)    
     def is_nowTime(self):
-        tempTimeStr = self.timeStr
-        #如果以00结尾，对比精准度为分钟
-        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
-           tempTimeStr = tempTimeStr + ":00"
-        #对比精准到分（忽略秒）
+            
+        # 获取当前时间（忽略秒数）
         current_time = arrow.now().format('HH:mm')
-        task_time = arrow.get(tempTimeStr, "HH:mm:ss").format("HH:mm")
-        tempValue = current_time == task_time
-        return tempValue 
+             
+        #cron   
+        if self.isCron_time():
+            #是否在今天的待执行列表中
+            tempValue = current_time in self.cron_today_times
+            return tempValue, current_time
+        
+        else: 
+            #时间
+            tempTimeStr = self.timeStr
+            #如果分钟，补充00秒钟格式
+            if tempTimeStr.count(":") == 1:
+                tempTimeStr = tempTimeStr + ":00"
+            
+            task_time = arrow.get(tempTimeStr, "HH:mm:ss").format("HH:mm")
+            tempValue = current_time == task_time
+            return tempValue, current_time
     
     #是否未来时间(精确到分钟) 
     def is_featureTime(self):
         tempTimeStr = self.timeStr
-        #如果以00结尾，对比精准度为分钟
-        if tempTimeStr.count(":") == 1 and tempTimeStr.endswith("00"):
+        #如果是分支，补充00秒钟
+        if tempTimeStr.count(":") == 1:
            tempTimeStr = tempTimeStr + ":00"
-        #对比精准到分（忽略秒）
-        current_time = arrow.now().replace(second=0, microsecond=0).time()
-        task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
-        tempValue = task_time > current_time
-        return tempValue 
+        
+        #cron   
+        if self.isCron_time():
+            return True 
+        else:    
+            #对比精准到分（忽略秒）
+            current_time = arrow.now().replace(second=0, microsecond=0).time()
+            task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
+            tempValue = task_time > current_time
+            return tempValue 
     
     #是否未来day      
     def is_featureDay(self):
-        tempStr = self.circleTimeStr
-        tempValue = "每周" in tempStr or "每星期" in tempStr or "每天" in tempStr  or "工作日" in tempStr
-        #日期
-        if self.is_valid_date(tempStr):
-            tempValue = arrow.get(tempStr, 'YYYY-MM-DD').date() > arrow.now().date()
-            
-        return tempValue 
+        #cron   
+        if self.isCron_time():
+            return True
+        
+        else:     
+            tempStr = self.circleTimeStr
+            tempValue = "每周" in tempStr or "每星期" in tempStr or "每天" in tempStr  or "工作日" in tempStr
+            #日期
+            if self.is_valid_date(tempStr):
+                tempValue = arrow.get(tempStr, 'YYYY-MM-DD').date() > arrow.now().date()
+                
+            return tempValue 
     
     #是否today      
     def is_today(self):
+        #cron   
+        if self.isCron_time():
+            return True 
+        
         #当前时间
         current_time = arrow.now()
         #轮询信息
@@ -575,9 +642,9 @@ class TimeTaskModel:
         match = pattern.match(date_string)
         return match is not None
     
-    
     #获取周期
     def get_cicleDay(self, circleStr):
+        
         # 定义正则表达式
         pattern = r'^\d{4}-\d{2}-\d{2}$'
         # 是否符合 YYYY-MM-DD 格式的日期
@@ -704,3 +771,21 @@ class TimeTaskModel:
               return g_time
                  
         return ""
+    
+    #是否 cron表达式
+    def isCron_time(self):
+        tempValue = self.circleTimeStr.startswith("cron[")
+        return tempValue
+    
+    #是否正确的cron格式
+    def isValid_Cron_time(self):
+        tempValue = croniter.is_valid(self.cron_expression)
+        return tempValue
+    
+    #获取 cron表达式
+    def get_cron_expression(self):
+        tempValue = self.timeStr
+        tempValue = tempValue.replace("cron[", "")
+        tempValue = tempValue.replace("Cron[", "")
+        tempValue = tempValue.replace("]", "")
+        return tempValue
