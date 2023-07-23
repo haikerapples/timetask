@@ -19,6 +19,14 @@
       "func_command_prefix":""
     },
     {
+      "key_word": "绘画",
+      "func_command_prefix":""
+    },
+     {
+      "key_word": "vega",
+      "func_command_prefix":""
+    },
+    {
       "key_word": "微博热搜",
       "func_command_prefix":""
     },
