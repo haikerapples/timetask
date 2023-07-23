@@ -147,7 +147,6 @@ class TaskManager(object):
     #迁移历史任务   
     def moveTask_toHistory(self, modelArray):
         if len(modelArray) <= 0:
-            print("当前无过期任务，不触发迁移")
             return
           
         #当前时间的小时：分钟

@@ -360,14 +360,17 @@ class timetask(Plugin):
                     replay = Bridge().fetch_reply_content(content, context)
                     self.replay_use_custom(model, replay.content, replay.type)
                     return
-            
-                #检测插件是否会消费该消息
-                e_context = PluginManager().emit_event(
-                    EventContext(
-                        Event.ON_HANDLE_CONTEXT,
-                        {"channel": self, "context": context, "reply": Reply()},
+                
+                try:
+                    #检测插件是否会消费该消息
+                    e_context = PluginManager().emit_event(
+                        EventContext(
+                            Event.ON_HANDLE_CONTEXT,
+                            {"channel": self, "context": context, "reply": Reply()},
+                        )
                     )
-                )
+                except  Exception as e:
+                    print(f"路由插件异常！将使用原消息回复。错误信息：{e}")
             
         #回复处理
         reply_text = ""
