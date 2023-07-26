@@ -19,6 +19,8 @@ import config as RobotConfig
 import requests
 import io
 import time
+import gc
+from channel import channel_factory
 
 class TimeTaskRemindType(Enum):
     NO_Task = 1           #无任务
@@ -34,7 +36,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=500,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.1",
+    version="2.2",
     author="haikerwang",
 )
     
@@ -270,31 +272,24 @@ class timetask(Plugin):
         e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
         
     #使用自定义回复
-    def replay_use_custom(self, model: TimeTaskModel, reply_text: str, replyType: ReplyType, retry_cnt=0):
-        
-        try:    
-            receiver = model.other_user_id
-            if replyType == ReplyType.TEXT:
-                if len(reply_text) <= 0:
-                    reply_text = model.eventStr  
-                #群聊处理
-                if model.isGroup:
-                    reply_text = "@" + model.fromUser + "\n" + reply_text.strip()
-                itchat.send(reply_text, toUserName=receiver)
+    def replay_use_custom(self, model: TimeTaskModel, reply_text: str, replyType: ReplyType, context :Context, retry_cnt=0):
                 
-            elif replyType == ReplyType.IMAGE_URL:
-                img_url = reply_text
-                pic_res = requests.get(img_url, stream=True)
-                image_storage = io.BytesIO()
-                for block in pic_res.iter_content(1024):
-                    image_storage.write(block)
-                image_storage.seek(0)
-                itchat.send_image(image_storage, toUserName=receiver)
+        try:    
+            reply = Reply()
+            reply.type = replyType
+            reply.content = reply_text
+            channel_name = RobotConfig.conf().get("channel_type", "wx")
+            channel = channel_factory.create_channel(channel_name)
+            channel.send(reply, context)
+            
+            #释放
+            channel = None
+            gc.collect()    
                 
         except Exception as e:
             if retry_cnt < 2:
                 time.sleep(3 + 3 * retry_cnt)
-                self.replay_use_custom(model, reply_text, replyType, retry_cnt + 1)
+                self.replay_use_custom(model, reply_text, replyType, context,retry_cnt + 1)
             
         
     #执行定时task
@@ -309,7 +304,16 @@ class timetask(Plugin):
         matches = re.findall(pattern, orgin_string)
         # 创建字典
         content_dict = {match[0]: match[1] for match in matches}
-        
+        #替换源消息中的指令
+        content_dict["content"] = model.eventStr
+        #添加必要key
+        content_dict["receiver"] = model.other_user_id
+        content_dict["session_id"] = model.other_user_id
+        content_dict["isgroup"] = model.isGroup
+        msg : ChatMessage = ChatMessage(content_dict)
+        content_dict["msg"] = msg
+        context = Context(ContextType.TEXT, model.eventStr, content_dict)
+                
         #查看配置中是否开启拓展功能
         is_open_extension_function = self.conf.get("is_open_extension_function", True)
         #需要拓展功能
@@ -341,10 +345,6 @@ class timetask(Plugin):
             if isFindExFuc:
                 #替换源消息中的指令
                 content_dict["content"] = event_content
-                #添加必要key
-                content_dict["receiver"] = model.other_user_id
-                content_dict["session_id"] = model.other_user_id
-                content_dict["isgroup"] = model.isGroup
                 msg : ChatMessage = ChatMessage(content_dict)
                 content_dict["msg"] = msg
                 context = Context(ContextType.TEXT, event_content, content_dict)
@@ -357,8 +357,10 @@ class timetask(Plugin):
                     if img_match_prefix:
                         content = content.replace(img_match_prefix, "", 1)
                         context.type = ContextType.IMAGE_CREATE
-                    replay = Bridge().fetch_reply_content(content, context)
-                    self.replay_use_custom(model, replay.content, replay.type)
+                    
+                    #获取回复信息
+                    replay :Reply = Bridge().fetch_reply_content(content, context)
+                    self.replay_use_custom(model,replay.content,replay.type, context)
                     return
                 
                 try:
@@ -385,7 +387,7 @@ class timetask(Plugin):
             reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}"
                 
         #消息回复
-        self.replay_use_custom(model, reply_text, ReplyType.TEXT)
+        self.replay_use_custom(model, reply_text, ReplyType.TEXT, context)
 
 
     #检查前缀是否匹配
