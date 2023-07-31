@@ -35,6 +35,14 @@
       "func_command_prefix": ""
     },
     {
+      "key_word": "摸鱼日历",
+      "func_command_prefix": ""
+    },
+    {
+      "key_word": "职场日历",
+      "func_command_prefix": ""
+    },
+    {
       "key_word": "GPT",
       "func_command_prefix": "GPT"
     }
