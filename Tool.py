@@ -377,7 +377,7 @@ class TimeTaskModel:
     #10：other_user_id - otehrID
     #11：isGroup - 0/1，是否群聊； 0=否，1=是
     #12：原始内容 - 原始的消息体
-    
+    #13：今天是否被消息 - 每天会在凌晨自动重置
     def __init__(self, item, msg:ChatMessage, isNeedFormat: bool, isNeedCalculateCron = False):
         
         self.isNeedCalculateCron = isNeedCalculateCron

@@ -10,6 +10,12 @@ from typing import List
 from plugins.timetask.config import conf, load_config
 from lib import itchat
 from lib.itchat.content import *
+import config as RobotConfig
+try:
+    from channel.wechatnt.ntchat_channel import wechatnt
+except Exception as e:
+    print(f"未安装ntchat: {e}")
+
 
 class TaskManager(object):
     
@@ -113,10 +119,28 @@ class TaskManager(object):
     #检测是否重新登录了    
     def check_isRelogin(self):
         #机器人ID
-        robot_user_id = itchat.instance.storageClass.userName
+        robot_user_id = ""
+        #通道
+        channel_name = RobotConfig.conf().get("channel_type", "wx")
+        if channel_name == "wx":
+            robot_user_id = itchat.instance.storageClass.userName
+        elif channel_name == "ntchat":
+            try:
+                login_info = wechatnt.get_login_info()
+                nickname = login_info['nickname']
+                user_id = login_info['wxid']
+                robot_user_id = user_id
+            except Exception as e:
+                print(f"获取 ntchat的 userid 失败: {e}")
+                return  
         
         #登录后
         if robot_user_id is not None and len(self.timeTasks) > 0:
+            #NTChat的userID不变  
+            if channel_name == "ntchat":
+                self.isRelogin = False
+                return  
+        
             #取出任务中的一个模型
             model : TimeTaskModel = self.timeTasks[0]
             temp_isRelogin = robot_user_id != model.toUser_id
