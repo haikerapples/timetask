@@ -132,6 +132,8 @@ class TaskManager(object):
                 robot_user_id = user_id
             except Exception as e:
                 print(f"获取 ntchat的 userid 失败: {e}")
+                #nt
+                self.isRelogin = False
                 return  
         
         #登录后
