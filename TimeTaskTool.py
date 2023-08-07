@@ -135,6 +135,10 @@ class TaskManager(object):
                 #nt
                 self.isRelogin = False
                 return  
+        else:
+            #其他通道，默认不更新用户ID
+            self.isRelogin = False
+            return  
         
         #登录后
         if robot_user_id is not None and len(self.timeTasks) > 0:
