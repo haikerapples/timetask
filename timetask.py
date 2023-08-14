@@ -376,18 +376,21 @@ class timetask(Plugin):
             
         #回复处理
         reply_text = ""
+        replyType = None
         #插件消息
         if e_context:
             reply = e_context["reply"]
             if reply and reply.type: 
                 reply_text = reply.content
+                replyType = reply.type
             
         #原消息
         if reply_text is None or len(reply_text) <= 0:
             reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}"
+            replyType = ReplyType.TEXT
                 
         #消息回复
-        self.replay_use_custom(model, reply_text, ReplyType.TEXT, context)
+        self.replay_use_custom(model, reply_text, replyType, context)
 
 
     #检查前缀是否匹配
