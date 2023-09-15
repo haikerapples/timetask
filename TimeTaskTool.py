@@ -70,13 +70,10 @@ class TaskManager(object):
     
     #时间检查
     def timeCheck(self):
-        #任务数组
-        if len(self.timeTasks) <= 0:
-            return
         
         #检测是否重新登录了
         self.check_isRelogin()
-        #重新登录、未登录、数组为空，均跳过
+        #重新登录、未登录，均跳过
         if self.isRelogin:
             return
         
@@ -84,15 +81,21 @@ class TaskManager(object):
         modelArray = self.timeTasks
         historyArray, currentExpendArray, featureArray = self.getFuncArray(modelArray)
         
+        #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
+        if self.is_targetTime("00:00"):
+            self.refreshCronTask_identifier = ""
+            #刷新cron时间任务、周期任务的今天执行态
+            self.refresh_times(featureArray)
+        
         #是否到了迁移历史任务 - 目标时间
         if self.is_targetTime(self.move_historyTask_time):
+            self.moveHistoryTask_identifier = ""
             #迁移过期任务
             self.moveTask_toHistory(historyArray)
             
-        #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
-        if self.is_targetTime("00:00"):
-            #刷新cron时间任务、周期任务的今天执行态
-            self.refresh_times(featureArray)
+        #任务数组
+        if len(modelArray) <= 0:
+            return
                     
         #将数组赋值数组，提升性能(若self.timeTasks 未被多线程更新，赋值为待执行任务组)
         timeTask_ids = '😄'.join(item.taskId for item in self.timeTasks)
@@ -141,29 +144,30 @@ class TaskManager(object):
             return  
         
         #登录后
-        if robot_user_id is not None and len(self.timeTasks) > 0:
+        if robot_user_id is not None and len(robot_user_id) > 0:
             #NTChat的userID不变  
             if channel_name == "ntchat":
                 self.isRelogin = False
                 return  
         
             #取出任务中的一个模型
-            model : TimeTaskModel = self.timeTasks[0]
-            temp_isRelogin = robot_user_id != model.toUser_id
-           
-            if temp_isRelogin:
-                #更新为重新登录态
-                self.isRelogin = True
-                #等待登录完成
-                time.sleep(3)
-                
-                #更新userId
-                ExcelTool().update_userId()
-                #刷新数据
-                self.refreshDataFromExcel()
-                
-                #更新为非重新登录态
-                self.isRelogin = False
+            if self.timeTasks is not None and len(self.timeTasks) > 0: 
+                model : TimeTaskModel = self.timeTasks[0]
+                temp_isRelogin = robot_user_id != model.toUser_id
+            
+                if temp_isRelogin:
+                    #更新为重新登录态
+                    self.isRelogin = True
+                    #等待登录完成
+                    time.sleep(3)
+                    
+                    #更新userId
+                    ExcelTool().update_userId()
+                    #刷新数据
+                    self.refreshDataFromExcel()
+                    
+                    #更新为非重新登录态
+                    self.isRelogin = False
         else:
             #置为重新登录态
             self.isRelogin = True      
@@ -244,6 +248,9 @@ class TaskManager(object):
                 else:
                     taskModel.is_today_consumed = False
                     ExcelTool().write_columnValue_withTaskId_toExcel(taskModel.taskId, 14, "0")
+            
+            #刷新数据
+            self.refreshDataFromExcel()
             #置为end
             self.refreshCronTask_identifier = identifier_end
             

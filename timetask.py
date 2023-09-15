@@ -36,7 +36,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=500,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.3",
+    version="2.4",
     author="haikerwang",
 )
     
@@ -386,7 +386,13 @@ class timetask(Plugin):
             
         #原消息
         if reply_text is None or len(reply_text) <= 0:
-            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}"
+            # 获取当前时间
+            current_time = arrow.now()
+            # 去除秒钟
+            current_time_without_seconds = current_time.floor('minute')
+            # 转换为指定格式的字符串
+            formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
+            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}\n【当前时间】：{formatted_time}"
             replyType = ReplyType.TEXT
                 
         #消息回复

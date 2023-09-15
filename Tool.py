@@ -104,6 +104,9 @@ class ExcelTool(object):
             ws = wb[sheet_name]
             data = list(ws.values)
             #print(data)
+            if data is None or len(data) == 0:
+                print("[timeTask] 数据库timeTask任务列表数据为空")
+                
             return data
         else:
             print("timeTask文件不存在, 读取数据为空")
@@ -121,6 +124,8 @@ class ExcelTool(object):
             ws = wb[sheet_name]
             data = list(ws.values)
             
+            #需要删除的坐标
+            rows_to_delete = []
             #遍历任务列表
             for i, item in enumerate(data):
                  #任务ID
@@ -129,8 +134,16 @@ class ExcelTool(object):
                     #历史任务ID
                     his_taskId = hisItem[0]
                     if taskId == his_taskId:
-                        #移除
-                        ws.delete_rows(i + 1)
+                        rows_to_delete.add(i + 1)
+            
+            #排序坐标
+            sorted_rows_to_delete = sorted(rows_to_delete, reverse=True)
+                        
+            #遍历任务列表
+            for dx in sorted_rows_to_delete:
+                #移除
+                ws.delete_rows(dx)
+                
             #保存            
             wb.save(workbook_file_path)
             
