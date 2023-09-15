@@ -134,7 +134,7 @@ class ExcelTool(object):
                     #历史任务ID
                     his_taskId = hisItem[0]
                     if taskId == his_taskId:
-                        rows_to_delete.add(i + 1)
+                        rows_to_delete.append(i + 1)
             
             #排序坐标
             sorted_rows_to_delete = sorted(rows_to_delete, reverse=True)
