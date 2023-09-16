@@ -88,7 +88,7 @@ class timetask(Plugin):
     def cancel_timeTask(self, content, e_context: EventContext):
         #分割
         wordsArray = content.split(" ")
-        #任务Id
+        #任务编号
         taskId = wordsArray[1]
         isExist, taskModel = ExcelTool().write_columnValue_withTaskId_toExcel(taskId, 2, "0")
         taskContent = "未知"
@@ -102,10 +102,10 @@ class timetask(Plugin):
         #文案
         if isExist:
             tempStr = self.get_default_remind(TimeTaskRemindType.Cancel_Success)
-            reply_text = "⏰定时任务，取消成功~\n" + "【任务ID】：" + taskId + "\n" + "【任务详情】：" + taskContent
+            reply_text = "⏰定时任务，取消成功~\n" + "【任务编号】：" + taskId + "\n" + "【任务详情】：" + taskContent
         else:
             tempStr = self.get_default_remind(TimeTaskRemindType.Cancel_Failed)
-            reply_text = "⏰定时任务，取消失败😭，未找到任务ID，请核查\n" + "【任务ID】：" + taskId
+            reply_text = "⏰定时任务，取消失败😭，未找到任务编号，请核查\n" + "【任务编号】：" + taskId
         
         #拼接提示
         reply_text = reply_text + tempStr
@@ -209,7 +209,7 @@ class timetask(Plugin):
                 taskStr = f"{circleStr} {taskModel.eventStr}"
             else:
                 taskStr = f"{circleStr} {timeStr} {taskModel.eventStr}"
-            reply_text = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务ID】：{taskId}\n【任务详情】：{taskStr}"
+            reply_text = f"恭喜你，⏰定时任务已创建成功🎉~\n【任务编号】：{taskId}\n【任务详情】：{taskStr}"
         else:
             tempStr = self.get_default_remind(TimeTaskRemindType.Add_Failed)
             reply_text = f"sorry，⏰定时任务创建失败😭"
@@ -392,7 +392,7 @@ class timetask(Plugin):
             current_time_without_seconds = current_time.floor('minute')
             # 转换为指定格式的字符串
             formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
-            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}"
+            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务编号】：{model.taskId}\n【任务详情】：{model.eventStr}"
             replyType = ReplyType.TEXT
                 
         #消息回复
@@ -423,7 +423,7 @@ class timetask(Plugin):
         head = "\n\n【温馨提示】\n"
         addTask = "👉添加任务：$time 明天 十点十分 提醒我健身" + "\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
         addGPTTask = "👉GPT任务：$time 明天 十点十分 GPT 夸夸我" + "\n"
-        cancelTask = "👉取消任务：$time 取消任务 任务ID" + "\n"
+        cancelTask = "👉取消任务：$time 取消任务 任务编号" + "\n"
         taskList = "👉任务列表：$time 任务列表" + "\n"
         more = "👉更多功能：#help timetask"
         
@@ -478,8 +478,8 @@ class timetask(Plugin):
         tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr + exampleStr0
         
         h_str1 = "🎉功能二：取消定时任务\n"
-        codeStr1 = "【指令】：$time 取消任务 任务ID\n"
-        taskId1 = "【任务ID】：任务ID（添加任务成功时，机器人回复中有）\n"
+        codeStr1 = "【指令】：$time 取消任务 任务编号\n"
+        taskId1 = "【任务编号】：任务编号（添加任务成功时，机器人回复中有）\n"
         exampleStr1 = "\n👉示例：$time 取消任务 urwOi0he\n\n\n"
         tempStr1 = h_str1 + codeStr1 + taskId1 + exampleStr1
         
