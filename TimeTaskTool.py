@@ -83,12 +83,16 @@ class TaskManager(object):
         
         #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
         if self.is_targetTime("00:00"):
+            new_array = [item.taskId for item in modelArray]
+            print(f"[timeTask] 触发了凌晨刷新任务~ 当前任务ID为：{new_array}")
             self.refreshCronTask_identifier = ""
             #刷新cron时间任务、周期任务的今天执行态
             self.refresh_times(featureArray)
         
         #是否到了迁移历史任务 - 目标时间
         if self.is_targetTime(self.move_historyTask_time):
+            new_array = [item.taskId for item in modelArray]
+            print(f"[timeTask] 触发了迁移历史任务~ 当前任务ID为：{new_array}")
             self.moveHistoryTask_identifier = ""
             #迁移过期任务
             self.moveTask_toHistory(historyArray)

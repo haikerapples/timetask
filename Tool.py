@@ -147,11 +147,14 @@ class ExcelTool(object):
             #保存            
             wb.save(workbook_file_path)
             
+            hisIds = []
             #添加历史列表
             for _, t in enumerate(tasks):
+                his_taskId = t[0]
+                hisIds.append(his_taskId)
                 self.addItemToExcel(t, file_name, history_sheet_name)     
                 
-            print(f"将任务Sheet({sheet_name})中的 过期任务 迁移指 -> 历史Sheet({history_sheet_name}) 完毕~")            
+            print(f"将任务Sheet({sheet_name})中的 过期任务 迁移指 -> 历史Sheet({history_sheet_name}) 完毕~ \n 迁移的任务ID为：{hisIds}")            
             
             #返回最新数据
             return self.readExcel()  
