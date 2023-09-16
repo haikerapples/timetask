@@ -392,7 +392,7 @@ class timetask(Plugin):
             current_time_without_seconds = current_time.floor('minute')
             # 转换为指定格式的字符串
             formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
-            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}\n【当前时间】：{formatted_time}"
+            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务ID】：{model.taskId}\n【任务详情】：{model.eventStr}"
             replyType = ReplyType.TEXT
                 
         #消息回复
