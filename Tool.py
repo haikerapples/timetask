@@ -750,7 +750,7 @@ class TimeTaskModel:
                     #中文 且 在一 至 六十之间
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         hour = str(digits[item])
-                    elif item in digits.values():
+                    elif item in digits.values() or int(item) in digits.values():
                          hour = str(item)
                     else:
                         return ""       
@@ -758,7 +758,7 @@ class TimeTaskModel:
                 elif index == 1 and len(item) > 0:
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         minute = str(digits[item])
-                    elif item in digits.values():
+                    elif item in digits.values() or int(item) in digits.values():
                         minute = str(item)
                     else:
                         return ""  
@@ -766,7 +766,7 @@ class TimeTaskModel:
                 elif index == 2 and len(item) > 0:
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         second = str(digits[item])
-                    elif item in digits.values():
+                    elif item in digits.values() or int(item) in digits.values():
                         second = str(item)  
                     else:
                         return ""    
