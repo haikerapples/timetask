@@ -206,7 +206,7 @@ class timetask(Plugin):
                 channel_name = RobotConfig.conf().get("channel_type", "wx")
                 groupId = taskModel.get_gropID_withGroupTitle(groupTitle , channel_name)
                 if len(groupId) <= 0:
-                    defaultErrorMsg = f"⏰定时任务指令格式异常😭，未找到群名为 {groupTitle} 的群聊，请核查！" + self.get_default_remind(TimeTaskRemindType.Add_Failed)
+                    defaultErrorMsg = f"⏰定时任务指令格式异常😭，未找到群名为【{groupTitle}】的群聊，请核查！" + self.get_default_remind(TimeTaskRemindType.Add_Failed)
                     self.replay_use_default(defaultErrorMsg, e_context)
                     return
         
