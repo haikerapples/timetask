@@ -506,8 +506,9 @@ class timetask(Plugin):
         circleStr = "【周期】：今天、明天、后天、每天、工作日、每周X（如：每周三）、YYYY-MM-DD的日期、cron表达式\n"
         timeStr = "【时间】：X点X分（如：十点十分）、HH:mm:ss的时间\n"
         enventStr = "【事件】：早报、点歌、搜索、GPT、文案提醒（如：提醒我健身）\n"
-        exampleStr = "\n👉提醒任务示例：$time 明天 十点十分 提醒我健身\n" + "👉cron任务示例：$time cron[0 * * * *] 准点报时" + "\n"
-        exampleStr0 = "👉GPT任务示例：$time 明天 十点十分 GPT 夸夸我\n\n\n"
+        exampleStr = "\n👉提醒任务：$time 明天 十点十分 提醒我健身\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
+        exampleStr += "👉定群任务：$time 今天 十点十分 提醒我健身 group[群标题]" + "\n"
+        exampleStr0 = "👉GPT任务：$time 明天 十点十分 GPT 夸夸我\n\n\n"
         tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr + exampleStr0
         
         h_str1 = "🎉功能二：取消定时任务\n"
