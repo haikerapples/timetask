@@ -17,6 +17,10 @@ from lib.itchat.content import *
 from channel.chat_message import ChatMessage
 from croniter import croniter
 import threading
+try:
+    from channel.wechatnt.ntchat_channel import wechatnt
+except Exception as e:
+    print(f"未安装ntchat: {e}")
 
 class ExcelTool(object):
     __file_name = "timeTask.xlsx"
@@ -812,3 +816,79 @@ class TimeTaskModel:
         tempValue = tempValue.replace("Cron[", "")
         tempValue = tempValue.replace("]", "")
         return tempValue
+    
+    #是否 私聊制定群任务
+    def isPerson_makeGrop(self):
+        tempValue = self.eventStr.endswith("]")
+        tempValue1 = "group[" in self.eventStr or "Group[" in self.eventStr
+        return tempValue and tempValue1
+    
+    #获取私聊制定群任务的群Title、事件
+    def get_Persion_makeGropTitle_eventStr(self):
+        index = -1
+        targetStr = self.eventStr
+        if "group[" in targetStr:
+            index = targetStr.index("group[")
+        elif "Group[" in targetStr:
+            index = targetStr.index("Group[")
+        if index < 0:
+              return "", targetStr
+          
+        substring_event = targetStr[:index]
+        substring_groupTitle = targetStr[index + 1:]
+        substring_groupTitle = substring_groupTitle.replace("]", "").strip()
+        return substring_event, substring_groupTitle
+    
+    #通过 群Title 获取群ID
+    def get_gropID_withGroupTitle(self, groupTitle, channel_name):
+        if len(groupTitle) <= 0:
+              return ""
+        #itchat
+        if channel_name == "wx":
+            tempRoomId = ""
+            #群聊处理       
+            try:
+                #群聊  
+                chatrooms = itchat.get_chatrooms(update=True)[1:]
+                #获取群聊
+                for chatroom in chatrooms:
+                    #id
+                    userName = chatroom["UserName"]
+                    NickName = chatroom["NickName"]
+                    if NickName == groupTitle:
+                        tempRoomId = userName
+                        break
+                    
+                return tempRoomId
+            except Exception as e:
+                print(f"通过 群Title 获取群ID发生错误，错误信息为：{e}")
+                return tempRoomId
+            
+            
+        elif channel_name == "nt":
+            tempRoomId = ""
+            try:
+                #数据结构为字典数组
+                rooms = wechatnt.get_rooms()
+                if len(rooms) > 0:
+                    #遍历
+                    for item in rooms:
+                        roomId = item.get("wxid")
+                        nickname = item.get("nickname")
+                        if nickname == groupTitle:
+                            tempRoomId = roomId
+                            break
+                        
+                return tempRoomId
+                        
+            except Exception as e:
+                print(f"通过 群Title 获取群ID发生错误，错误信息为：{e}")
+                return tempRoomId
+        else:
+            print(f"通过 群Title 获取群ID 不支持的channel，channel为：{channel_name}")
+                    
+                
+            
+             
+        
+        

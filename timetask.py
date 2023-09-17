@@ -5,7 +5,6 @@ from bridge.reply import Reply, ReplyType
 from channel.chat_message import ChatMessage
 import logging
 from plugins import *
-import logging
 from plugins.timetask.TimeTaskTool import TaskManager
 from plugins.timetask.config import conf, load_config
 from plugins.timetask.Tool import TimeTaskModel
@@ -36,7 +35,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=500,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.4",
+    version="2.5",
     author="haikerwang",
 )
     
@@ -196,6 +195,13 @@ class timetask(Plugin):
             if not taskModel.isValid_Cron_time():
                self.replay_use_default(defaultErrorMsg, e_context)
                return
+           
+        #私人为群聊任务
+        if taskModel.isPerson_makeGrop():
+            newEvent, groupTitle = taskModel.get_Persion_makeGropTitle_eventStr()
+            if len(groupTitle) <= 0 or len(newEvent) <= 0 :
+               self.replay_use_default(defaultErrorMsg, e_context)
+               return
         
         #task入库
         taskId = self.taskManager.addTask(taskModel)
@@ -295,7 +301,26 @@ class timetask(Plugin):
     #执行定时task
     def runTimeTask(self, model: TimeTaskModel):
         
-        print("触发了定时任务：{} , 任务详情：{}".format(model.taskId, model.eventStr))
+        #事件内容
+        eventStr = model.eventStr
+        #发送的用户ID
+        other_user_id = model.other_user_id
+        #是否群聊
+        isGroup = model.isGroup
+        
+        #是否个人为群聊制定的任务
+        if model.isPerson_makeGrop():
+            newEvent, groupTitle = model.get_Persion_makeGropTitle_eventStr()
+            eventStr = newEvent
+            channel_name = RobotConfig.conf().get("channel_type", "wx")
+            groupId = model.get_gropID_withGroupTitle(groupTitle , channel_name)
+            other_user_id = groupId
+            isGroup = True
+            if len(groupId) <= 0:
+                logging.error(f"通过群标题【{groupTitle}】,未查到对应的群ID, 跳过本次消息")
+                return
+        
+        print("触发了定时任务：{} , 任务详情：{}".format(model.taskId, eventStr))
         
         #去除多余字符串
         orgin_string = model.originMsg.replace("ChatMessage:", "")
@@ -305,21 +330,21 @@ class timetask(Plugin):
         # 创建字典
         content_dict = {match[0]: match[1] for match in matches}
         #替换源消息中的指令
-        content_dict["content"] = model.eventStr
+        content_dict["content"] = eventStr
         #添加必要key
-        content_dict["receiver"] = model.other_user_id
-        content_dict["session_id"] = model.other_user_id
-        content_dict["isgroup"] = model.isGroup
+        content_dict["receiver"] = other_user_id
+        content_dict["session_id"] = other_user_id
+        content_dict["isgroup"] = isGroup
         msg : ChatMessage = ChatMessage(content_dict)
         content_dict["msg"] = msg
-        context = Context(ContextType.TEXT, model.eventStr, content_dict)
+        context = Context(ContextType.TEXT, eventStr, content_dict)
                 
         #查看配置中是否开启拓展功能
         is_open_extension_function = self.conf.get("is_open_extension_function", True)
         #需要拓展功能
         if is_open_extension_function:
             #事件字符串
-            event_content = model.eventStr
+            event_content = eventStr
             #支持的功能
             funcArray = self.conf.get("extension_function", [])
             #是否是GPT消息
@@ -392,7 +417,7 @@ class timetask(Plugin):
             current_time_without_seconds = current_time.floor('minute')
             # 转换为指定格式的字符串
             formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
-            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务编号】：{model.taskId}\n【任务详情】：{model.eventStr}"
+            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务编号】：{model.taskId}\n【任务详情】：{eventStr}"
             replyType = ReplyType.TEXT
                 
         #消息回复
