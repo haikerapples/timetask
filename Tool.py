@@ -834,8 +834,8 @@ class TimeTaskModel:
         if index < 0:
               return "", targetStr
           
-        substring_event = targetStr[:index]
-        substring_groupTitle = targetStr[index + 1:]
+        substring_event = targetStr[:index].strip()
+        substring_groupTitle = targetStr[index + 6:]
         substring_groupTitle = substring_groupTitle.replace("]", "").strip()
         return substring_event, substring_groupTitle
     
