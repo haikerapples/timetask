@@ -40,8 +40,11 @@ class TaskManager(object):
         #迁移任务的标识符：用于标识在目标时间，只迁移一次
         self.moveHistoryTask_identifier = ""
         
-        #刷新cron任务的标识符：用于标识在目标时间，只刷新一次
-        self.refreshCronTask_identifier = ""
+        #刷新任务的标识符：用于标识在目标时间，只刷新一次
+        self.refreshTimeTask_identifier = ""
+        
+        #存放历史数据
+        self.historyTasks = []
         
         #配置加载
         load_config()
@@ -81,21 +84,26 @@ class TaskManager(object):
         modelArray = self.timeTasks
         historyArray, currentExpendArray, featureArray = self.getFuncArray(modelArray)
         
+        #存放历史数据
+        if len(historyArray) > 0:
+            for item in historyArray:
+                if item not in currentExpendArray and item not in featureArray and item not in self.historyTasks:
+                      self.historyTasks.append(item)
+        
         #是否到了凌晨00:00 - 目标时间，刷新今天的cron任务
         if self.is_targetTime("00:00"):
-            new_array = [item.taskId for item in modelArray]
-            print(f"[timeTask] 触发了凌晨刷新任务~ 当前任务ID为：{new_array}")
-            self.refreshCronTask_identifier = ""
             #刷新cron时间任务、周期任务的今天执行态
-            self.refresh_times(featureArray)
+            self.refresh_times(featureArray) 
+        elif len(self.refreshTimeTask_identifier) > 0:
+            self.refreshTimeTask_identifier = ""
+            
         
         #是否到了迁移历史任务 - 目标时间
         if self.is_targetTime(self.move_historyTask_time):
-            new_array = [item.taskId for item in modelArray]
-            print(f"[timeTask] 触发了迁移历史任务~ 当前任务ID为：{new_array}")
-            self.moveHistoryTask_identifier = ""
             #迁移过期任务
-            self.moveTask_toHistory(historyArray)
+            self.moveTask_toHistory(self.historyTasks)
+        elif len(self.moveHistoryTask_identifier) > 0:
+            self.moveHistoryTask_identifier = ""
             
         #任务数组
         if len(modelArray) <= 0:
@@ -199,14 +207,16 @@ class TaskManager(object):
         
         #未执行
         if current_task_state == "":
+            #打印当前任务
+            new_array = [item.taskId for item in self.timeTasks]
+            print(f"[timeTask] 触发了迁移历史任务~ 当前任务ID为：{new_array}")
+            
             #置为执行中
             self.moveHistoryTask_identifier = identifier_running
             #迁移任务
             newTimeTask = ExcelTool().moveTasksToHistoryExcel(modelArray)
             #数据刷新
             self.convetDataToModelArray(newTimeTask)
-            #置为end
-            self.moveHistoryTask_identifier = identifier_end
             
         #执行中    
         elif current_task_state == identifier_running:
@@ -237,26 +247,24 @@ class TaskManager(object):
         identifier_end = f"{current_time_hour_min}_end"
         
         #当前状态
-        current_task_state = self.refreshCronTask_identifier
+        current_task_state = self.refreshTimeTask_identifier
         
         #未执行
         if current_task_state == "":
+            #打印此时任务
+            new_array = [item.taskId for item in self.timeTasks]
+            print(f"[timeTask] 触发了凌晨刷新任务~ 当前任务ID为：{new_array}")
+            
             #置为执行中
-            self.refreshCronTask_identifier = identifier_running
+            self.refreshTimeTask_identifier = identifier_running
             #刷新任务
             for m in modelArray:
                 taskModel : TimeTaskModel = m
-                #cron类型
-                if taskModel.isCron_time():
-                    taskModel.get_todayCron_times()
-                else:
-                    taskModel.is_today_consumed = False
-                    ExcelTool().write_columnValue_withTaskId_toExcel(taskModel.taskId, 14, "0")
+                taskModel.is_today_consumed = False
+                ExcelTool().write_columnValue_withTaskId_toExcel(taskModel.taskId, 14, "0")
             
             #刷新数据
             self.refreshDataFromExcel()
-            #置为end
-            self.refreshCronTask_identifier = identifier_end
             
         #执行中    
         elif current_task_state == identifier_running:
@@ -264,7 +272,7 @@ class TaskManager(object):
         
         #执行完成
         elif current_task_state == identifier_end:
-            self.refreshCronTask_identifier == ""
+            self.refreshTimeTask_identifier == ""
             
         #容错：如果时间未跳动，则正常命中【执行完成】； 异常时间跳动时，则比较时间
         elif "_end" in current_task_state:
@@ -274,7 +282,7 @@ class TaskManager(object):
             task_time = arrow.get(tempTimeStr, "HH:mm:ss").replace(second=0, microsecond=0).time()
             tempValue = task_time < current_time
             if tempValue:
-                self.refreshCronTask_identifier == ""
+                self.refreshTimeTask_identifier == ""
        
     #获取功能数组    
     def getFuncArray(self, modelArray):
