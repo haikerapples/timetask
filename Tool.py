@@ -820,7 +820,7 @@ class TimeTaskModel:
     #是否 私聊制定群任务
     def isPerson_makeGrop(self):
         tempValue = self.eventStr.endswith("]")
-        tempValue1 = "group[" in self.eventStr and "Group[" in self.eventStr
+        tempValue1 = "group[" in self.eventStr or "Group[" in self.eventStr
         return tempValue and tempValue1
     
     #获取私聊制定群任务的群Title、事件
