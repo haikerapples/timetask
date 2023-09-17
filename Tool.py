@@ -360,7 +360,7 @@ class ExcelTool(object):
             #群聊处理       
             try:
                 #群聊 （id组装 旧 ：新）   
-                chatrooms = itchat.get_chatrooms(update=True)[1:]
+                chatrooms = itchat.get_chatrooms()
             except ZeroDivisionError:
                 # 捕获并处理 ZeroDivisionError 异常
                 print("群聊列表, 错误发生")
@@ -849,7 +849,7 @@ class TimeTaskModel:
             #群聊处理       
             try:
                 #群聊  
-                chatrooms = itchat.get_chatrooms(update=True)[1:]
+                chatrooms = itchat.get_chatrooms()
                 #获取群聊
                 for chatroom in chatrooms:
                     #id
