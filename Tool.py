@@ -457,7 +457,18 @@ class TimeTaskModel:
             self.isGroup = item[11] == "1"
             self.originMsg = item[12]
             if len(item) > 13:
-                self.is_today_consumed = item[13] == "1"         
+                self.is_today_consumed = item[13] == "1" 
+        
+        #容错
+        emptStr = ""
+        self.fromUser = emptStr if self.fromUser is None else self.fromUser
+        self.fromUser_id = emptStr if self.fromUser_id is None else self.fromUser_id
+        self.toUser = emptStr if self.toUser is None else self.toUser
+        self.toUser_id = emptStr if self.toUser_id is None else self.toUser_id
+        self.other_user_nickname = emptStr if self.other_user_nickname is None else self.other_user_nickname
+        self.other_user_id = emptStr if self.other_user_id is None else self.other_user_id
+        self.isGroup = False if self.isGroup is None else self.isGroup
+        self.originMsg = emptStr if self.originMsg is None else self.originMsg   
         
         #cron表达式
         self.cron_expression = self.get_cron_expression()
