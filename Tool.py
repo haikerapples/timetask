@@ -749,12 +749,13 @@ class TimeTaskModel:
                 '三十一': 31, '三十二': 32, '三十三': 33, '三十四': 34, '三十五': 35, '三十六': 36, '三十七': 37, '三十八': 38, '三十九': 39, '四十': 40, 
                 '四十一': 41, '四十二': 42, '四十三': 43, '四十四': 44, '四十五': 45, '四十六': 46, '四十七': 47, '四十八': 48, '四十九': 49, '五十': 50, 
                 '五十一': 51, '五十二': 52, '五十三': 53, '五十四': 54, '五十五': 55, '五十六': 56, '五十七': 57, '五十八': 58, '五十九': 59, '六十': 60, '半': 30}
+            littleNumArray = ["01", "02", "03", "04", "05", "06", "07", "08", "09"]
             for index, item in enumerate(wordsArray):
                 if index == 0 and len(item) > 0:
                     #中文 且 在一 至 六十之间
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         hour = str(digits[item])
-                    elif item in digits.values() or int(item) in digits.values():
+                    elif item in digits.values() or int(item) in digits.values() or item in littleNumArray:
                          hour = str(item)
                     else:
                         return ""       
@@ -762,7 +763,7 @@ class TimeTaskModel:
                 elif index == 1 and len(item) > 0:
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         minute = str(digits[item])
-                    elif item in digits.values() or int(item) in digits.values():
+                    elif item in digits.values() or int(item) in digits.values() or item in littleNumArray:
                         minute = str(item)
                     else:
                         return ""  
@@ -770,20 +771,20 @@ class TimeTaskModel:
                 elif index == 2 and len(item) > 0:
                     if re.search('[\u4e00-\u9fa5]', item) and item in digits.keys():
                         second = str(digits[item])
-                    elif item in digits.values() or int(item) in digits.values():
+                    elif item in digits.values() or int(item) in digits.values() or item in littleNumArray:
                         second = str(item)  
                     else:
                         return ""    
             
             #格式处理       
             if int(hour) < 10:
-                  hour = "0" + hour
+                  hour = "0" + str(int(hour))
                       
             if int(minute) < 10:
-                  minute = "0" + minute
+                  minute = "0" + str(int(minute))
                   
             if int(second) < 10:
-                  second = "0" + second  
+                  second = "0" + str(int(second))  
             
             #拼接     
             g_time = hour + ":" + minute + ":" + second                                       
