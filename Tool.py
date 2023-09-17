@@ -865,7 +865,7 @@ class TimeTaskModel:
                 return tempRoomId
             
             
-        elif channel_name == "nt":
+        elif channel_name == "ntchat":
             tempRoomId = ""
             try:
                 #数据结构为字典数组
