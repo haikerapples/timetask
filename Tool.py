@@ -898,6 +898,7 @@ class TimeTaskModel:
                 return tempRoomId
         else:
             print(f"通过 群Title 获取群ID 不支持的channel，channel为：{channel_name}")
+            return ""
                     
                 
             
