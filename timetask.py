@@ -35,7 +35,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=950,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.5",
+    version="2.6",
     author="haikerwang",
 )
     

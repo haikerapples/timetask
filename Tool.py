@@ -22,6 +22,11 @@ try:
 except Exception as e:
     print(f"未安装ntchat: {e}")
 
+try:
+    from channel.wework.run import wework
+except Exception as e:
+    print(f"未安装wework: {e}")
+
 class ExcelTool(object):
     __file_name = "timeTask.xlsx"
     __sheet_name = "定时任务"
@@ -873,7 +878,7 @@ class TimeTaskModel:
                     
                 return tempRoomId
             except Exception as e:
-                print(f"通过 群Title 获取群ID发生错误，错误信息为：{e}")
+                print(f"[{channel_name}通道] 通过 群Title 获取群ID发生错误，错误信息为：{e}")
                 return tempRoomId
             
             
@@ -894,10 +899,30 @@ class TimeTaskModel:
                 return tempRoomId
                         
             except Exception as e:
-                print(f"通过 群Title 获取群ID发生错误，错误信息为：{e}")
+                print(f"[{channel_name}通道] 通过 群Title 获取群ID发生错误，错误信息为：{e}")
+                return tempRoomId
+
+        elif channel_name == "wework":
+            tempRoomId = ""
+            try:
+                # 数据结构为字典数组
+                rooms = wework.get_rooms()
+                if len(rooms) > 0:
+                    # 遍历
+                    for item in rooms:
+                        roomId = item.get("conversation_id")
+                        nickname = item.get("nickname")
+                        if nickname == groupTitle:
+                            tempRoomId = roomId
+                            break
+
+                return tempRoomId
+
+            except Exception as e:
+                print(f"[{channel_name}通道] 通过 群Title 获取群ID发生错误，错误信息为：{e}")
                 return tempRoomId
         else:
-            print(f"通过 群Title 获取群ID 不支持的channel，channel为：{channel_name}")
+            print(f"[{channel_name}通道] 通过 群Title 获取群ID 不支持的channel，channel为：{channel_name}")
             return ""
                     
                 
