@@ -906,7 +906,7 @@ class TimeTaskModel:
             tempRoomId = ""
             try:
                 # 数据结构为字典数组
-                rooms = wework.get_rooms()
+                rooms = wework.get_rooms().get("room_list")
                 if len(rooms) > 0:
                     # 遍历
                     for item in rooms:
