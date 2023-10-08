@@ -59,6 +59,7 @@ Tips：与机器人对话，发送如下定时任务指令即可
 Tips：拓展功能需要项目已安装该插件，更多自定义插件支持可在
  timetask/config.json 的 extension_function 自助配置即可。
 ```
+https://github.com/haikerapples/timetask/blob/master/images/addTask_corn.jpg
 
 添加任务示例：
 ```
