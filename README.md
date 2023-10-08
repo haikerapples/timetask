@@ -59,9 +59,7 @@ Tips：与机器人对话，发送如下定时任务指令即可
 Tips：拓展功能需要项目已安装该插件，更多自定义插件支持可在
  timetask/config.json 的 extension_function 自助配置即可。
 ```
-![添加定时任务 - 提醒任务](https://github.com/haikerapples/timetask/blob/master/images/addTask_normal.jpg)
-
-![添加定时任务 - Cron任务](https://github.com/haikerapples/timetask/blob/master/images/addTask_corn.jpg)
+![添加定时任务](https://github.com/haikerapples/timetask/blob/master/images/addTask_all.jpg)
 	
 	
 ### **二、取消定时任务**
@@ -72,43 +70,18 @@ Tips：拓展功能需要项目已安装该插件，更多自定义插件支持�
 1. **$time 取消任务**：指令前缀，以此前缀，会取消定时任务
 2. **任务编号**：机器人回复的任务编号（添加任务成功时，机器人回复中有）
 
-示例：
-```
-a、指令：$time 取消任务 lyMUeRsm
+![取消定时任务](https://github.com/haikerapples/timetask/blob/master/images/cancelTask.jpg)
 
-b、指令执行成功，如下 ：
-	 ⏰定时任务，取消成功~
-    【任务编号】：lyMUeRsm
-    【任务详情】：2023-06-28 10:10:00 提醒我健身
-
-效果：将会将对应任务编号取消，可通过任务列表查看，若任务编号不存在，则取消失败
-```
 	
-
 
 ##### **方法二、先查询任务编号列表，然后选择要取消的任务编号，取消定时任务**
 
 1. 【指令格式】：$time 任务列表
-```
-a、指令：$time 任务列表
+![任务列表](https://github.com/haikerapples/timetask/blob/master/images/timeTasks.jpg)
 
-b、指令执行成功，将会将任务列表展示如下：
-⏰定时任务列表如下：
-
-【vc6q51aM】@每日学习打卡: 2023-06-28 09:30:00 搜索 乌克兰最新战报
-【01cMy68M】@每日学习打卡: 2023-06-28 09:50:00 早报
-【lwmZxAS5】@每日学习打卡: 2023-06-28 17:30:00 提醒吃晚饭
-【rqqko22d】@仰望同一片星空: cron[5 * * * *] 定时提醒
-
- 
-效果：指令执行成后，机器人会将所有 待执行的任务列表，回复出来。
-```
 
 2. 根据任务列表，选择要取消的任务编号，执行上面的方法一（直接通过任务编号，取消定时任务）
-```
-指令：$time 取消任务 vc6q51aM
-```
-
+![取消任务](https://github.com/haikerapples/timetask/blob/master/images/cancelTask.jpg)
 
 ### **三、查看定时任务列表**
 
@@ -116,20 +89,8 @@ b、指令执行成功，将会将任务列表展示如下：
 *  指令执行成后，机器人会将所有 **待执行的任务列表**，回复出来
 *  已过期或已被消费过的任务会自动过滤
 
-```
-a、指令：$time 任务列表
+![任务列表](https://github.com/haikerapples/timetask/blob/master/images/timeTasks.jpg)
 
-b、指令执行成功，将会将任务列表展示如下：
-⏰定时任务列表如下：
-
-【vc6q51aM】@每日学习打卡: 2023-06-28 09:30:00 搜索 乌克兰最新战报
-【01cMy68M】@每日学习打卡: 2023-06-28 09:50:00 早报
-【lwmZxAS5】@每日学习打卡: 2023-06-28 17:30:00 提醒吃晚饭
-【rqqko22d】@仰望同一片星空: cron[5 * * * *] 定时提醒
-
- 
-效果：指令执行成后，机器人会将所有 待执行的任务列表，回复出来。
-```
 
 ### **四、插件文件介绍**
 
@@ -178,6 +139,13 @@ b、指令执行成功，将会将任务列表展示如下：
   ]
 }
 ```
+![配置文件](https://github.com/haikerapples/timetask/blob/master/images/confige_reply.jpg)
+
+
+
+### **五、其他**
+##### 查看所有定时任务指令：
+![所有指令](https://github.com/haikerapples/timetask/blob/master/images/allTaskCode.jpg)
 
 ##### 任务Excel文件：timetask/timeTask.xlsx
 ```
