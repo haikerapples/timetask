@@ -35,7 +35,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=950,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.6",
+    version="2.7",
     author="haikerwang",
 )
     
@@ -48,8 +48,13 @@ class timetask(Plugin):
         load_config()
         self.conf = conf()
         self.taskManager = TaskManager(self.runTimeTask)
+        self.channel = None
         
     def on_handle_context(self, e_context: EventContext):
+        if self.channel is not None:
+            self.channel = e_context["channel"]
+            logging.debug(f"本次的channel为：{self.channel}")
+
         if e_context["context"].type not in [
             ContextType.TEXT,
         ]:
@@ -400,7 +405,7 @@ class timetask(Plugin):
                     e_context = PluginManager().emit_event(
                         EventContext(
                             Event.ON_HANDLE_CONTEXT,
-                            {"channel": self, "context": context, "reply": Reply()},
+                            {"channel": self.channel, "context": context, "reply": Reply()},
                         )
                     )
                 except  Exception as e:
@@ -418,13 +423,26 @@ class timetask(Plugin):
             
         #原消息
         if reply_text is None or len(reply_text) <= 0:
-            # 获取当前时间
-            current_time = arrow.now()
-            # 去除秒钟
-            current_time_without_seconds = current_time.floor('minute')
-            # 转换为指定格式的字符串
-            formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
-            reply_text = f"⏰叮铃铃，定时任务时间已到啦~\n【当前时间】：{formatted_time}\n【任务编号】：{model.taskId}\n【任务详情】：{eventStr}"
+            #标题
+            if self.conf.get("is_need_title_whenNormalReply", True):
+                reply_text += f"⏰叮铃铃，定时任务时间已到啦~\n"
+            #时间
+            if self.conf.get("is_need_currentTime_whenNormalReply", True):
+                # 获取当前时间
+                current_time = arrow.now()
+                # 去除秒钟
+                current_time_without_seconds = current_time.floor('minute')
+                # 转换为指定格式的字符串
+                formatted_time = current_time_without_seconds.format("YYYY-MM-DD HH:mm:ss")
+                reply_text += f"【当前时间】：{formatted_time}\n"
+            #任务标识
+            if self.conf.get("is_need_identifier_whenNormalReply", True):
+                reply_text += f"【任务编号】：{model.taskId}\n"
+            #内容描述
+            if self.conf.get("is_need_detailDeccription_whenNormalReply", True):
+                reply_text += f"【任务详情】："
+
+            reply_text += eventStr
             replyType = ReplyType.TEXT
                 
         #消息回复
@@ -453,9 +471,9 @@ class timetask(Plugin):
     def get_default_remind(self, currentType: TimeTaskRemindType):
         #head
         head = "\n\n【温馨提示】\n"
-        addTask = "👉添加任务：$time 明天 十点十分 提醒我健身" + "\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
-        addTask += "👉定群任务：$time 今天 十点十分 提醒我健身 group[群标题]" + "\n"
-        addGPTTask = "👉GPT任务：$time 明天 十点十分 GPT 夸夸我" + "\n"
+        addTask = "👉添加任务：$time 今天 10:00 提醒我健身" + "\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
+        addTask += "👉定群任务：$time 今天 10:00 提醒我健身 group[群标题]" + "\n"
+        addGPTTask = "👉GPT任务：$time 今天 10:00 GPT 夸夸我" + "\n"
         cancelTask = "👉取消任务：$time 取消任务 任务编号" + "\n"
         taskList = "👉任务列表：$time 任务列表" + "\n"
         more = "👉更多功能：#help timetask"
@@ -506,9 +524,9 @@ class timetask(Plugin):
         circleStr = "【周期】：今天、明天、后天、每天、工作日、每周X（如：每周三）、YYYY-MM-DD的日期、cron表达式\n"
         timeStr = "【时间】：X点X分（如：十点十分）、HH:mm:ss的时间\n"
         enventStr = "【事件】：早报、点歌、搜索、GPT、文案提醒（如：提醒我健身）\n"
-        exampleStr = "\n👉提醒任务：$time 明天 十点十分 提醒我健身\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
-        exampleStr += "👉定群任务：$time 今天 十点十分 提醒我健身 group[群标题]" + "\n"
-        exampleStr0 = "👉GPT任务：$time 明天 十点十分 GPT 夸夸我\n\n\n"
+        exampleStr = "\n👉提醒任务：$time 今天 10:00 提醒我健身\n" + "👉cron任务：$time cron[0 * * * *] 准点报时" + "\n"
+        exampleStr += "👉定群任务：$time 今天 10:00 提醒我健身 group[群标题]" + "\n"
+        exampleStr0 = "👉GPT任务：$time 今天 10:00 GPT 夸夸我\n\n\n"
         tempStr = h_str + codeStr + circleStr + timeStr + enventStr + exampleStr + exampleStr0
         
         h_str1 = "🎉功能二：取消定时任务\n"
