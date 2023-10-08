@@ -51,7 +51,7 @@ class timetask(Plugin):
         self.channel = None
         
     def on_handle_context(self, e_context: EventContext):
-        if self.channel is not None:
+        if self.channel is None:
             self.channel = e_context["channel"]
             logging.debug(f"本次的channel为：{self.channel}")
 
