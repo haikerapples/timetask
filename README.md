@@ -59,28 +59,9 @@ Tips：与机器人对话，发送如下定时任务指令即可
 Tips：拓展功能需要项目已安装该插件，更多自定义插件支持可在
  timetask/config.json 的 extension_function 自助配置即可。
 ```
-https://github.com/haikerapples/timetask/blob/master/images/addTask_corn.jpg
+![添加定时任务 - 提醒任务](https://github.com/haikerapples/timetask/blob/master/images/addTask_normal.jpg)
 
-添加任务示例：
-```
-a、指令： $time 明天 十点十分 提醒我健身
-
-b、指令执行成功，如下 ：
-	恭喜你，⏰定时任务已创建成功🎉~
-   【任务编号】：lwmZxAS5
-   【任务详情】：提醒吃晚饭
-    
-效果：机器人会回复 任务编号 及 任务详情
-```
-
-定时任务执行示例：
-```
-⏰叮铃铃，定时任务时间已到啦~
-【任务编号】：rqqko22d
-【任务详情】：定时提醒
-    
-效果：机器人会回复 任务编号 及 任务详情
-```
+![添加定时任务 - Cron任务](https://github.com/haikerapples/timetask/blob/master/images/addTask_corn.jpg)
 	
 	
 ### **二、取消定时任务**
