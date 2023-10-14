@@ -72,8 +72,7 @@ class timetask(Plugin):
             print("[timetask] 捕获到定时任务:{}".format(query))
             #移除指令
             #示例：$time 明天 十点十分 提醒我健身
-            content = query.replace(f"{command_prefix} ", "")
-            content = content.replace(command_prefix, "")
+            content = query.replace(f"{command_prefix}", "", 1).strip()
             self.deal_timeTask(content, e_context)
 
     #处理时间任务
