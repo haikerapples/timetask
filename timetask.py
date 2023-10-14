@@ -35,7 +35,7 @@ class TimeTaskRemindType(Enum):
     desire_priority=950,
     hidden=True,
     desc="定时任务系统，可定时处理事件",
-    version="2.7",
+    version="2.8",
     author="haikerwang",
 )
     
@@ -350,11 +350,27 @@ class timetask(Plugin):
         msg : ChatMessage = ChatMessage(content_dict)
         content_dict["msg"] = msg
         context = Context(ContextType.TEXT, eventStr, content_dict)
-                
+
+        #变量
+        e_context = None
+        # 是否开启了所有回复路由
+        is_open_route_everyReply = self.conf.get("is_open_route_everyReply", True)
+        if is_open_route_everyReply:
+            try:
+                # 检测插件是否会消费该消息
+                e_context = PluginManager().emit_event(
+                    EventContext(
+                        Event.ON_HANDLE_CONTEXT,
+                        {"channel": self.channel, "context": context, "reply": Reply()},
+                    )
+                )
+            except  Exception as e:
+                print(f"开启了所有回复均路由，但是消息路由插件异常！后续会继续查询是否开启拓展功能。错误信息：{e}")
+
         #查看配置中是否开启拓展功能
         is_open_extension_function = self.conf.get("is_open_extension_function", True)
-        #需要拓展功能
-        if is_open_extension_function:
+        #需要拓展功能 & 未被路由消费
+        if is_open_extension_function and e_context is None:
             #事件字符串
             event_content = eventStr
             #支持的功能
@@ -378,7 +394,6 @@ class timetask(Plugin):
                 break
             
             #找到了拓展功能
-            e_context = None
             if isFindExFuc:
                 #替换源消息中的指令
                 content_dict["content"] = event_content
