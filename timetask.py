@@ -347,6 +347,12 @@ class timetask(Plugin):
         content_dict["session_id"] = other_user_id
         content_dict["isgroup"] = isGroup
         msg : ChatMessage = ChatMessage(content_dict)
+        #信息映射
+        for key, value in content_dict.items():
+            if hasattr(msg, key):
+                setattr(msg, key, value)
+        #处理message的is_group
+        msg.is_group = isGroup
         content_dict["msg"] = msg
         context = Context(ContextType.TEXT, eventStr, content_dict)
 
