@@ -355,6 +355,34 @@ class timetask(Plugin):
         msg.is_group = isGroup
         content_dict["msg"] = msg
         context = Context(ContextType.TEXT, eventStr, content_dict)
+        
+        #处理GPT
+        event_content = eventStr
+        key_word = "GPT"
+        isGPT = event_content.startswith(key_word)
+    
+        #GPT处理
+        if isGPT:
+            index = event_content.find(key_word)
+            #内容体      
+            event_content = event_content[:index] + event_content[index+len(key_word):]
+            event_content = event_content.strip()
+            #替换源消息中的指令
+            content_dict["content"] = event_content
+            msg.content = event_content
+            context.__setitem__("content",event_content)
+        
+            content = context.content.strip()
+            imgPrefix = RobotConfig.conf().get("image_create_prefix")
+            img_match_prefix = self.check_prefix(content, imgPrefix)
+            if img_match_prefix:
+                content = content.replace(img_match_prefix, "", 1)
+                context.type = ContextType.IMAGE_CREATE
+            
+            #获取回复信息
+            replay :Reply = Bridge().fetch_reply_content(content, context)
+            self.replay_use_custom(model,replay.content,replay.type, context)
+            return
 
         #变量
         e_context = None
@@ -375,13 +403,14 @@ class timetask(Plugin):
         #查看配置中是否开启拓展功能
         is_open_extension_function = self.conf.get("is_open_extension_function", True)
         #需要拓展功能 & 未被路由消费
-        if is_open_extension_function and e_context is None:
+        route_replyType = None
+        if e_context:
+            route_replyType = e_context["reply"].type
+        if is_open_extension_function and route_replyType is None:
             #事件字符串
             event_content = eventStr
             #支持的功能
             funcArray = self.conf.get("extension_function", [])
-            #是否是GPT消息
-            isGPT = False
             for item in funcArray:
               key_word = item["key_word"]
               func_command_prefix = item["func_command_prefix"]
@@ -390,11 +419,9 @@ class timetask(Plugin):
               if event_content.startswith(key_word):
                 index = event_content.find(key_word)
                 insertStr = func_command_prefix + key_word 
-                if func_command_prefix == "GPT":
-                      isGPT = True
-                      insertStr = ""
                 #内容体      
                 event_content = event_content[:index] + insertStr + event_content[index+len(key_word):]
+                event_content = event_content.strip()
                 isFindExFuc = True
                 break
             
@@ -402,23 +429,8 @@ class timetask(Plugin):
             if isFindExFuc:
                 #替换源消息中的指令
                 content_dict["content"] = event_content
-                msg : ChatMessage = ChatMessage(content_dict)
-                content_dict["msg"] = msg
-                context = Context(ContextType.TEXT, event_content, content_dict)
-                
-                #GPT处理
-                if isGPT:
-                    content = context.content.strip()
-                    imgPrefix = RobotConfig.conf().get("image_create_prefix")
-                    img_match_prefix = self.check_prefix(content, imgPrefix)
-                    if img_match_prefix:
-                        content = content.replace(img_match_prefix, "", 1)
-                        context.type = ContextType.IMAGE_CREATE
-                    
-                    #获取回复信息
-                    replay :Reply = Bridge().fetch_reply_content(content, context)
-                    self.replay_use_custom(model,replay.content,replay.type, context)
-                    return
+                msg.content = event_content
+                context.__setitem__("content",event_content)
                 
                 try:
                     #检测插件是否会消费该消息
