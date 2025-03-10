@@ -9,11 +9,11 @@
   "is_need_currentTime_whenNormalReply": true,
   "is_need_identifier_whenNormalReply": true,
   "is_need_detailDeccription_whenNormalReply": true,
-  "extension_function":
-  [
+  "append_signature_to_gpt": false,
+  "extension_function": [
     {
       "key_word": "早报",
-      "func_command_prefix":"$tool "
+      "func_command_prefix": "$tool "
     },
     {
       "key_word": "点歌",
